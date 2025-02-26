@@ -25,9 +25,15 @@ const Dashboard = () => {
 
   const createDocument = useMutation({
     mutationFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
       const { data, error } = await supabase
         .from('documents')
-        .insert([{ title: 'Untitled Document' }])
+        .insert([{ 
+          title: 'Untitled Document',
+          created_by: user.id 
+        }])
         .select()
         .single();
       
@@ -43,6 +49,7 @@ const Dashboard = () => {
         title: "Error",
         description: "Failed to create document",
       });
+      console.error("Error creating document:", error);
     },
   });
 
