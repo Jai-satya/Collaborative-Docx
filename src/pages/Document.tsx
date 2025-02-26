@@ -8,6 +8,17 @@ import DocumentEditor from "@/components/DocumentEditor";
 import Comments from "@/components/Comments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+interface Presence {
+  user: {
+    id: string;
+    name: string;
+    avatar?: string;
+  };
+  lastActive: string;
+  cursor?: { x: number; y: number };
+}
 
 const Document = () => {
   const { id } = useParams();
@@ -16,6 +27,7 @@ const Document = () => {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [activeUsers, setActiveUsers] = useState<Presence[]>([]);
 
   const { data: document, isLoading } = useQuery({
     queryKey: ['document', id],
@@ -39,10 +51,10 @@ const Document = () => {
     }
   }, [document]);
 
-  // Set up real-time subscription
+  // Set up real-time document subscription
   useEffect(() => {
     const channel = supabase
-      .channel('document_changes')
+      .channel(`document:${id}`)
       .on(
         'postgres_changes',
         {
@@ -61,6 +73,54 @@ const Document = () => {
       supabase.removeChannel(channel);
     };
   }, [id, queryClient]);
+
+  // Set up presence channel for collaborative features
+  useEffect(() => {
+    let presenceChannel: ReturnType<typeof supabase.channel>;
+
+    const setupPresence = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      presenceChannel = supabase.channel(`presence:${id}`, {
+        config: {
+          presence: {
+            key: user.id,
+          },
+        },
+      });
+
+      presenceChannel
+        .on('presence', { event: 'sync' }, () => {
+          const state = presenceChannel.presenceState();
+          const users = Object.values(state).flat().map((p: any) => ({
+            user: p.user,
+            lastActive: new Date().toISOString(),
+            cursor: p.cursor,
+          }));
+          setActiveUsers(users);
+        })
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await presenceChannel.track({
+              user: {
+                id: user.id,
+                name: user.email?.split('@')[0] || 'Anonymous',
+                avatar: user.user_metadata?.avatar_url,
+              },
+            });
+          }
+        });
+    };
+
+    setupPresence();
+
+    return () => {
+      if (presenceChannel) {
+        supabase.removeChannel(presenceChannel);
+      }
+    };
+  }, [id]);
 
   const updateDocument = useMutation({
     mutationFn: async ({ title, content }: { title: string; content: string }) => {
@@ -106,7 +166,18 @@ const Document = () => {
             className="text-2xl font-bold"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-4">
+          <div className="flex -space-x-2">
+            {activeUsers.map((presence) => (
+              <div key={presence.user.id} className="relative">
+                <Avatar className="border-2 border-white">
+                  <AvatarImage src={presence.user.avatar} />
+                  <AvatarFallback>{presence.user.name[0].toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+              </div>
+            ))}
+          </div>
           <Button onClick={() => navigate("/dashboard")}>Back</Button>
           <Button onClick={handleSave} disabled={updateDocument.isPending}>
             {updateDocument.isPending ? "Saving..." : "Save"}
@@ -115,7 +186,11 @@ const Document = () => {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
-          <DocumentEditor content={content} onUpdate={setContent} />
+          <DocumentEditor 
+            content={content} 
+            onUpdate={setContent}
+            documentId={id!}
+          />
         </div>
         <div>
           <Comments documentId={id!} />

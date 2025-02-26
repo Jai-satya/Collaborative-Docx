@@ -1,17 +1,70 @@
 
+import { useEffect, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Button } from "@/components/ui/button";
 import { Bold, Italic, List, ListOrdered } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { debounce } from 'lodash';
 
-const DocumentEditor = ({ content, onUpdate }: { content: string; onUpdate: (content: string) => void }) => {
+interface DocumentEditorProps {
+  content: string;
+  onUpdate: (content: string) => void;
+  documentId: string;
+}
+
+const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) => {
+  const [localContent, setLocalContent] = useState(content);
+
   const editor = useEditor({
     extensions: [StarterKit],
-    content,
+    content: localContent,
     onUpdate: ({ editor }) => {
-      onUpdate(editor.getHTML());
+      const newContent = editor.getHTML();
+      setLocalContent(newContent);
+      debouncedUpdate(newContent);
     },
   });
+
+  const debouncedUpdate = debounce((newContent: string) => {
+    onUpdate(newContent);
+    // Broadcast content change to other users
+    channel?.send({
+      type: 'broadcast',
+      event: 'content_update',
+      payload: { content: newContent },
+    });
+  }, 1000);
+
+  const [channel, setChannel] = useState<ReturnType<typeof supabase.channel> | null>(null);
+
+  useEffect(() => {
+    if (!documentId) return;
+
+    const newChannel = supabase.channel(`document:${documentId}`);
+
+    newChannel
+      .on('broadcast', { event: 'content_update' }, ({ payload }) => {
+        if (payload.content !== localContent) {
+          setLocalContent(payload.content);
+          editor?.commands.setContent(payload.content);
+        }
+      })
+      .subscribe();
+
+    setChannel(newChannel);
+
+    return () => {
+      newChannel.unsubscribe();
+    };
+  }, [documentId]);
+
+  useEffect(() => {
+    if (content !== localContent) {
+      setLocalContent(content);
+      editor?.commands.setContent(content);
+    }
+  }, [content]);
 
   if (!editor) {
     return null;
