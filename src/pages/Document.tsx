@@ -28,6 +28,16 @@ interface Presence {
   cursor?: { x: number; y: number };
 }
 
+interface DocumentShare {
+  id: string;
+  document_id: string;
+  share_token: string;
+  permission_level: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
 const Document = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -160,14 +170,14 @@ const Document = () => {
 
   const createShareLink = useMutation({
     mutationFn: async (permission: string) => {
-      // First, create or update the sharing settings in the database
+      // First, check if there's an existing share
       const { data: existingShare, error: fetchError } = await supabase
         .from('document_shares')
         .select('*')
         .eq('document_id', id)
         .single();
       
-      // Generate a unique share token
+      // Generate a unique share token if needed
       const shareToken = existingShare?.share_token || crypto.randomUUID();
       
       if (existingShare) {
@@ -181,26 +191,36 @@ const Document = () => {
           .eq('id', existingShare.id);
         
         if (error) throw error;
+        
+        return {
+          token: existingShare.share_token,
+          url: `${window.location.origin}/shared/${existingShare.share_token}`
+        };
       } else {
         // Create new share
-        const { error } = await supabase
+        const userId = (await supabase.auth.getUser()).data.user?.id;
+        
+        const { data, error } = await supabase
           .from('document_shares')
           .insert({
             document_id: id,
             share_token: shareToken,
             permission_level: permission,
-            created_by: (await supabase.auth.getUser()).data.user?.id
-          });
+            created_by: userId
+          })
+          .select('*')
+          .single();
         
         if (error) throw error;
+        
+        return {
+          token: data.share_token,
+          url: `${window.location.origin}/shared/${data.share_token}`
+        };
       }
-      
-      // Return the share link
-      return `${window.location.origin}/shared/${shareToken}`;
     },
-    onSuccess: (link) => {
-      setShareLink(link);
-      setSharePermission(sharePermission);
+    onSuccess: (result) => {
+      setShareLink(result.url);
       toast({
         title: "Share link created",
         description: "The document can now be shared with others",

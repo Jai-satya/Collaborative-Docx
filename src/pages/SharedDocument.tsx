@@ -22,6 +22,27 @@ interface Presence {
   cursor?: { x: number; y: number };
 }
 
+interface DocumentShare {
+  id: string;
+  document_id: string;
+  share_token: string;
+  permission_level: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  document: {
+    id: string;
+    title: string;
+    content: string | null;
+    created_by: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+    parent_id: string | null;
+    is_template: boolean | null;
+    status: string | null;
+  };
+}
+
 const SharedDocument = () => {
   const { token } = useParams();
   const navigate = useNavigate();
@@ -54,18 +75,20 @@ const SharedDocument = () => {
         .single();
       
       if (error) throw error;
-      return data;
+      return data as DocumentShare;
     },
     enabled: !!token,
-    onSuccess: (data) => {
-      if (data) {
-        setDocumentId(data.document_id);
-        setPermissionLevel(data.permission_level);
-        setTitle(data.document.title);
-        setContent(data.document.content || '');
-      }
-    },
   });
+
+  // Update state when share data is fetched
+  useEffect(() => {
+    if (shareData) {
+      setDocumentId(shareData.document_id);
+      setPermissionLevel(shareData.permission_level);
+      setTitle(shareData.document.title);
+      setContent(shareData.document.content || '');
+    }
+  }, [shareData]);
 
   // Set up real-time document subscription
   useEffect(() => {

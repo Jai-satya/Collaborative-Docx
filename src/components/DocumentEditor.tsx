@@ -42,7 +42,7 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
       debouncedUpdate(newContent);
     },
     onCreate: ({ editor }) => {
-      // Fixed: Properly handle the event listener which doesn't return anything
+      // Fix: Store the event listener handler so it can be properly removed later
       const editorDom = editor.view.dom;
       editorDom.addEventListener('mousemove', handleCursorMove);
     },

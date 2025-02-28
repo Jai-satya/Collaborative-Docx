@@ -61,6 +61,44 @@ export type Database = {
           },
         ]
       }
+      document_shares: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          document_id: string
+          id: string
+          permission_level: string
+          share_token: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          document_id: string
+          id?: string
+          permission_level: string
+          share_token?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          document_id?: string
+          id?: string
+          permission_level?: string
+          share_token?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_shares_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_versions: {
         Row: {
           content: string
