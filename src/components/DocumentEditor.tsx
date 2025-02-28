@@ -19,6 +19,7 @@ interface CursorPosition {
   username: string;
   position: { top: number; left: number };
   color: string;
+  timestamp?: number; // Add optional timestamp property
 }
 
 const colors = [
@@ -30,6 +31,7 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
   const [localContent, setLocalContent] = useState(content);
   const [cursors, setCursors] = useState<CursorPosition[]>([]);
   const { toast } = useToast();
+  const [userColor, setUserColor] = useState('');
   
   const editor = useEditor({
     extensions: [StarterKit],
@@ -49,16 +51,24 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
 
   const debouncedUpdate = debounce((newContent: string) => {
     onUpdate(newContent);
-    channel?.send({
-      type: 'broadcast',
-      event: 'content_update',
-      payload: { content: newContent },
-    });
+    if (channel) {
+      channel.send({
+        type: 'broadcast',
+        event: 'content_update',
+        payload: { content: newContent },
+      });
+    }
   }, 1000);
 
   const handleCursorMove = debounce(async (event: MouseEvent) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user || !channel) return;
+
+    // Initialize user color if not already set
+    if (!userColor) {
+      const newColor = colors[Math.floor(Math.random() * colors.length)];
+      setUserColor(newColor);
+    }
 
     const rect = (event.target as HTMLElement).getBoundingClientRect();
     const position = {
@@ -73,7 +83,8 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
         userId: user.id,
         username: user.email?.split('@')[0] || 'Anonymous',
         position,
-        color: colors[Math.floor(Math.random() * colors.length)],
+        color: userColor || colors[Math.floor(Math.random() * colors.length)],
+        timestamp: Date.now(), // Add timestamp for expiration tracking
       },
     });
   }, 50);
@@ -89,13 +100,15 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
       .on('broadcast', { event: 'content_update' }, ({ payload }) => {
         if (payload.content !== localContent) {
           setLocalContent(payload.content);
-          editor?.commands.setContent(payload.content);
+          if (editor) {
+            editor.commands.setContent(payload.content);
+          }
         }
       })
       .on('broadcast', { event: 'cursor_move' }, ({ payload }) => {
         setCursors(prev => {
           const filtered = prev.filter(c => c.userId !== payload.userId);
-          return [...filtered, payload as CursorPosition];
+          return [...filtered, { ...payload, timestamp: Date.now() }];
         });
       })
       .subscribe();
@@ -105,24 +118,33 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
     return () => {
       newChannel.unsubscribe();
     };
-  }, [documentId]);
+  }, [documentId, editor, localContent]);
 
   useEffect(() => {
     if (content !== localContent) {
       setLocalContent(content);
-      editor?.commands.setContent(content);
+      if (editor) {
+        editor.commands.setContent(content);
+      }
     }
-  }, [content]);
+  }, [content, editor]);
 
   useEffect(() => {
     const cleanup = setInterval(() => {
       setCursors(prev => prev.filter(c => 
-        Date.now() - new Date(c.timestamp || 0).getTime() < 5000
+        c.timestamp && Date.now() - c.timestamp < 5000
       ));
     }, 5000);
 
     return () => clearInterval(cleanup);
   }, []);
+
+  // Initialize user color on first render
+  useEffect(() => {
+    if (!userColor) {
+      setUserColor(colors[Math.floor(Math.random() * colors.length)]);
+    }
+  }, [userColor]);
 
   if (!editor) {
     return null;
@@ -166,7 +188,7 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
       </div>
       <div className="relative">
         <EditorContent editor={editor} className="p-4 min-h-[200px] prose max-w-none" />
-        {cursors.map((cursor, index) => (
+        {cursors.map((cursor) => (
           <div
             key={cursor.userId}
             className="absolute pointer-events-none"
