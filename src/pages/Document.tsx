@@ -9,6 +9,14 @@ import Comments from "@/components/Comments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { 
+  Popover, 
+  PopoverContent, 
+  PopoverTrigger 
+} from "@/components/ui/popover";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Share, Copy, Check } from "lucide-react";
 
 interface Presence {
   user: {
@@ -28,6 +36,9 @@ const Document = () => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [activeUsers, setActiveUsers] = useState<Presence[]>([]);
+  const [shareLink, setShareLink] = useState("");
+  const [sharePermission, setSharePermission] = useState("view");
+  const [copied, setCopied] = useState(false);
 
   const { data: document, isLoading } = useQuery({
     queryKey: ['document', id],
@@ -147,6 +158,77 @@ const Document = () => {
     },
   });
 
+  const createShareLink = useMutation({
+    mutationFn: async (permission: string) => {
+      // First, create or update the sharing settings in the database
+      const { data: existingShare, error: fetchError } = await supabase
+        .from('document_shares')
+        .select('*')
+        .eq('document_id', id)
+        .single();
+      
+      // Generate a unique share token
+      const shareToken = existingShare?.share_token || crypto.randomUUID();
+      
+      if (existingShare) {
+        // Update existing share
+        const { error } = await supabase
+          .from('document_shares')
+          .update({ 
+            permission_level: permission,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingShare.id);
+        
+        if (error) throw error;
+      } else {
+        // Create new share
+        const { error } = await supabase
+          .from('document_shares')
+          .insert({
+            document_id: id,
+            share_token: shareToken,
+            permission_level: permission,
+            created_by: (await supabase.auth.getUser()).data.user?.id
+          });
+        
+        if (error) throw error;
+      }
+      
+      // Return the share link
+      return `${window.location.origin}/shared/${shareToken}`;
+    },
+    onSuccess: (link) => {
+      setShareLink(link);
+      setSharePermission(sharePermission);
+      toast({
+        title: "Share link created",
+        description: "The document can now be shared with others",
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create share link",
+      });
+    },
+  });
+
+  const handleGenerateShareLink = () => {
+    createShareLink.mutate(sharePermission);
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(shareLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast({
+      title: "Link copied",
+      description: "Share link copied to clipboard",
+    });
+  };
+
   const handleSave = () => {
     updateDocument.mutate({ title, content });
   };
@@ -178,6 +260,60 @@ const Document = () => {
               </div>
             ))}
           </div>
+          
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Share className="h-4 w-4" />
+                Share
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80">
+              <div className="space-y-4">
+                <h4 className="font-medium">Share this document</h4>
+                
+                <div className="space-y-2">
+                  <h5 className="text-sm font-medium">Permission</h5>
+                  <RadioGroup 
+                    value={sharePermission} 
+                    onValueChange={setSharePermission}
+                    className="flex flex-col space-y-1"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="view" id="r1" />
+                      <Label htmlFor="r1">View only</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="edit" id="r2" />
+                      <Label htmlFor="r2">Can edit</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+                
+                {shareLink ? (
+                  <div className="flex items-center gap-2">
+                    <Input value={shareLink} readOnly className="flex-1" />
+                    <Button 
+                      size="icon" 
+                      variant="outline" 
+                      onClick={handleCopyLink}
+                      className="flex-shrink-0"
+                    >
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                ) : (
+                  <Button 
+                    onClick={handleGenerateShareLink}
+                    disabled={createShareLink.isPending}
+                  >
+                    {createShareLink.isPending ? "Generating..." : "Generate link"}
+                  </Button>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+          
           <Button onClick={() => navigate("/dashboard")}>Back</Button>
           <Button onClick={handleSave} disabled={updateDocument.isPending}>
             {updateDocument.isPending ? "Saving..." : "Save"}
