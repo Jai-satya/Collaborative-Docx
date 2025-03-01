@@ -1,8 +1,9 @@
+
 import { useEffect, useState, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Button } from "@/components/ui/button";
-import { Bold, Italic, List, ListOrdered, Users, Sparkles, Mic, MicOff } from "lucide-react";
+import { Bold, Italic, List, ListOrdered, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { debounce } from 'lodash';
 import { useToast } from "@/components/ui/use-toast";
@@ -12,11 +13,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 
 interface DocumentEditorProps {
   content: string;
@@ -45,8 +41,6 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
   const { toast } = useToast();
   const [userColor, setUserColor] = useState('');
   const editorRef = useRef<HTMLDivElement>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [aiSuggesting, setAiSuggesting] = useState(false);
   
   const editor = useEditor({
     extensions: [StarterKit],
@@ -71,8 +65,7 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
 
   const handleCursorMove = debounce(async (event: MouseEvent) => {
     try {
-      const userResponse = await supabase.auth.getUser();
-      const user = userResponse.data.user;
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user || !channel || !editorRef.current) return;
 
       // Initialize user color if not already set
@@ -131,6 +124,7 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
       })
       .on('broadcast', { event: 'cursor_move' }, ({ payload }) => {
         setCursors(prev => {
+          // Add this user to active users list if not already there
           setActiveUsers(current => {
             if (!current.includes(payload.userId)) {
               return [...current, payload.userId];
@@ -146,6 +140,7 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
 
     setChannel(newChannel);
 
+    // Add cursor move listener to editor
     if (editorRef.current) {
       editorRef.current.addEventListener('mousemove', handleCursorMove);
     }
@@ -167,10 +162,12 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
 
   useEffect(() => {
     const cleanup = setInterval(() => {
+      // Clean up cursors that haven't been updated in 5 seconds
       setCursors(prev => prev.filter(c => 
         c.timestamp && Date.now() - c.timestamp < 5000
       ));
       
+      // Clean up active users that haven't been active in 30 seconds
       setActiveUsers(current => {
         const activeIds = cursors
           .filter(c => c.timestamp && Date.now() - c.timestamp < 30000)
@@ -182,158 +179,12 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
     return () => clearInterval(cleanup);
   }, [cursors]);
 
+  // Initialize user color on first render
   useEffect(() => {
     if (!userColor) {
       setUserColor(colors[Math.floor(Math.random() * colors.length)]);
     }
   }, [userColor]);
-
-  const suggestCompletion = async () => {
-    if (!editor) return;
-    
-    try {
-      setAiSuggesting(true);
-      
-      const currentContent = editor.getText();
-      if (currentContent.length < 10) {
-        toast({
-          title: "Not enough content",
-          description: "Please write a bit more before requesting AI suggestions.",
-          variant: "destructive"
-        });
-        setAiSuggesting(false);
-        return;
-      }
-      
-      const response = await fetch(`${window.location.origin}/api/suggest-completion`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          content: currentContent,
-          documentId
-        }),
-      });
-      
-      if (!response.ok) {
-        throw new Error("Failed to get AI suggestions");
-      }
-      
-      const { suggestion } = await response.json();
-      
-      if (suggestion && editor) {
-        editor.commands.insertContent(suggestion);
-        toast({
-          title: "AI Suggestion Added",
-          description: "Content has been added based on your text.",
-        });
-      }
-    } catch (error) {
-      console.error("Error getting AI suggestions:", error);
-      toast({
-        title: "Error",
-        description: "Failed to get AI suggestions. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setAiSuggesting(false);
-    }
-  };
-
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          setAudioChunks(prev => [...prev, event.data]);
-        }
-      };
-      
-      recorder.onstop = async () => {
-        if (audioChunks.length === 0) return;
-        
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        const reader = new FileReader();
-        
-        reader.onloadend = async () => {
-          const base64Audio = reader.result?.toString().split(',')[1];
-          
-          if (base64Audio) {
-            try {
-              toast({
-                title: "Processing audio...",
-                description: "Converting your speech to text...",
-              });
-              
-              const response = await fetch(`${window.location.origin}/api/speech-to-text`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ audio: base64Audio }),
-              });
-              
-              if (!response.ok) {
-                throw new Error("Failed to transcribe audio");
-              }
-              
-              const { text } = await response.json();
-              
-              if (text && editor) {
-                editor.commands.insertContent(text);
-                toast({
-                  title: "Transcription Complete",
-                  description: "Your speech has been added to the document.",
-                });
-              }
-            } catch (error) {
-              console.error("Error transcribing audio:", error);
-              toast({
-                title: "Error",
-                description: "Failed to transcribe audio. Please try again.",
-                variant: "destructive"
-              });
-            }
-          }
-          
-          setAudioChunks([]);
-        };
-        
-        reader.readAsDataURL(audioBlob);
-      };
-      
-      recorder.start();
-      setMediaRecorder(recorder);
-      setIsRecording(true);
-      
-      toast({
-        title: "Recording started",
-        description: "Speak clearly into your microphone.",
-      });
-    } catch (error) {
-      console.error("Error starting recording:", error);
-      toast({
-        title: "Error",
-        description: "Could not access microphone. Please check permissions.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorder && isRecording) {
-      mediaRecorder.stop();
-      setIsRecording(false);
-      
-      mediaRecorder.stream.getTracks().forEach(track => track.stop());
-    }
-  };
 
   if (!editor) {
     return null;
@@ -377,65 +228,24 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
           </Button>
         </div>
         
-        <div className="flex items-center gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex items-center gap-1"
-                disabled={aiSuggesting}
-                onClick={(e) => e.preventDefault()}
-              >
-                <Sparkles className="h-4 w-4" />
-                <span>AI assist</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-4">
-              <div className="space-y-4">
-                <h4 className="font-medium">AI Writing Assistant</h4>
-                <p className="text-sm text-muted-foreground">
-                  Get suggestions based on your current content to help you write more effectively.
-                </p>
-                <Button 
-                  className="w-full" 
-                  onClick={suggestCompletion}
-                  disabled={aiSuggesting}
-                >
-                  {aiSuggesting ? "Generating..." : "Generate suggestions"}
-                </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-md text-sm">
+                <Users className="h-3 w-3" />
+                <span>{activeUsers.length} active</span>
               </div>
-            </PopoverContent>
-          </Popover>
-          
-          <Button
-            variant={isRecording ? "destructive" : "outline"}
-            size="sm"
-            className="flex items-center gap-1"
-            onClick={isRecording ? stopRecording : startRecording}
-          >
-            {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-            <span>{isRecording ? "Stop" : "Voice"}</span>
-          </Button>
-        
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-md text-sm">
-                  <Users className="h-3 w-3" />
-                  <span>{activeUsers.length} active</span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="text-xs">Users currently viewing this document</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-xs">Users currently viewing this document</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
       <div className="relative" ref={editorRef}>
         <EditorContent editor={editor} className="p-4 min-h-[200px] prose max-w-none" />
         
+        {/* Render cursors */}
         {cursors.map((cursor) => (
           <div
             key={cursor.userId}
@@ -461,11 +271,14 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
           </div>
         ))}
         
+        {/* Render selections made by others */}
         {cursors
           .filter(cursor => cursor.selection && cursor.userId !== supabase.auth.getUser()?.data?.user?.id)
           .map((cursor) => {
             if (!cursor.selection || !editor) return null;
             
+            // This would need more complex implementation to visualize selections properly
+            // For now we'll just indicate that a user is selecting something
             return (
               <div 
                 key={`selection-${cursor.userId}`}
