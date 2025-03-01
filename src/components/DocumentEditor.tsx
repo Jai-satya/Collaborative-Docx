@@ -64,42 +64,46 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
   }, 1000);
 
   const handleCursorMove = debounce(async (event: MouseEvent) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !channel || !editorRef.current) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !channel || !editorRef.current) return;
 
-    // Initialize user color if not already set
-    if (!userColor) {
-      const newColor = colors[Math.floor(Math.random() * colors.length)];
-      setUserColor(newColor);
-    }
-
-    const rect = editorRef.current.getBoundingClientRect();
-    const position = {
-      top: event.clientY - rect.top,
-      left: event.clientX - rect.left,
-    };
-
-    // Get current selection if any
-    let selection = null;
-    if (editor && editor.state.selection) {
-      const { from, to } = editor.state.selection;
-      if (from !== to) {
-        selection = { from, to };
+      // Initialize user color if not already set
+      if (!userColor) {
+        const newColor = colors[Math.floor(Math.random() * colors.length)];
+        setUserColor(newColor);
       }
-    }
 
-    channel.send({
-      type: 'broadcast',
-      event: 'cursor_move',
-      payload: {
-        userId: user.id,
-        username: user.email?.split('@')[0] || 'Anonymous',
-        position,
-        color: userColor || colors[Math.floor(Math.random() * colors.length)],
-        timestamp: Date.now(),
-        selection,
-      },
-    });
+      const rect = editorRef.current.getBoundingClientRect();
+      const position = {
+        top: event.clientY - rect.top,
+        left: event.clientX - rect.left,
+      };
+
+      // Get current selection if any
+      let selection = null;
+      if (editor && editor.state.selection) {
+        const { from, to } = editor.state.selection;
+        if (from !== to) {
+          selection = { from, to };
+        }
+      }
+
+      channel.send({
+        type: 'broadcast',
+        event: 'cursor_move',
+        payload: {
+          userId: user.id,
+          username: user.email?.split('@')[0] || 'Anonymous',
+          position,
+          color: userColor || colors[Math.floor(Math.random() * colors.length)],
+          timestamp: Date.now(),
+          selection,
+        },
+      });
+    } catch (error) {
+      console.error("Error tracking cursor:", error);
+    }
   }, 50);
 
   const [channel, setChannel] = useState<ReturnType<typeof supabase.channel> | null>(null);
