@@ -16,7 +16,9 @@ import {
 } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Share, Copy, Check } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Share, Copy, Check, Lock } from "lucide-react";
+import { hashPassword } from "@/utils/password-utils";
 
 interface Presence {
   user: {
@@ -36,6 +38,8 @@ interface DocumentShare {
   created_by: string;
   created_at: string;
   updated_at: string;
+  is_password_protected: boolean;
+  password_hash: string | null;
 }
 
 const Document = () => {
@@ -48,6 +52,8 @@ const Document = () => {
   const [activeUsers, setActiveUsers] = useState<Presence[]>([]);
   const [shareLink, setShareLink] = useState("");
   const [sharePermission, setSharePermission] = useState("view");
+  const [isPasswordProtected, setIsPasswordProtected] = useState(false);
+  const [sharePassword, setSharePassword] = useState("");
   const [copied, setCopied] = useState(false);
 
   const { data: document, isLoading } = useQuery({
@@ -169,7 +175,11 @@ const Document = () => {
   });
 
   const createShareLink = useMutation({
-    mutationFn: async (permission: string) => {
+    mutationFn: async ({ permission, isPasswordProtected, password }: { 
+      permission: string; 
+      isPasswordProtected: boolean;
+      password?: string;
+    }) => {
       // First, check if there's an existing share
       const { data: existingShare, error: fetchError } = await supabase
         .from('document_shares')
@@ -180,12 +190,20 @@ const Document = () => {
       // Generate a unique share token if needed
       const shareToken = existingShare?.share_token || crypto.randomUUID();
       
+      // Hash the password if password protection is enabled
+      let passwordHash = null;
+      if (isPasswordProtected && password) {
+        passwordHash = await hashPassword(password);
+      }
+      
       if (existingShare) {
         // Update existing share
         const { error } = await supabase
           .from('document_shares')
           .update({ 
             permission_level: permission,
+            is_password_protected: isPasswordProtected,
+            password_hash: passwordHash,
             updated_at: new Date().toISOString()
           })
           .eq('id', existingShare.id);
@@ -206,6 +224,8 @@ const Document = () => {
             document_id: id,
             share_token: shareToken,
             permission_level: permission,
+            is_password_protected: isPasswordProtected,
+            password_hash: passwordHash,
             created_by: userId
           })
           .select('*')
@@ -236,7 +256,11 @@ const Document = () => {
   });
 
   const handleGenerateShareLink = () => {
-    createShareLink.mutate(sharePermission);
+    createShareLink.mutate({ 
+      permission: sharePermission, 
+      isPasswordProtected, 
+      password: isPasswordProtected ? sharePassword : undefined 
+    });
   };
 
   const handleCopyLink = () => {
@@ -309,6 +333,31 @@ const Document = () => {
                     </div>
                   </RadioGroup>
                 </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="password-protection" 
+                    checked={isPasswordProtected}
+                    onCheckedChange={(checked) => setIsPasswordProtected(checked === true)}
+                  />
+                  <Label htmlFor="password-protection" className="flex items-center">
+                    <Lock className="h-4 w-4 mr-2" />
+                    Password protect
+                  </Label>
+                </div>
+                
+                {isPasswordProtected && (
+                  <div className="space-y-2">
+                    <Label htmlFor="share-password">Password</Label>
+                    <Input
+                      id="share-password"
+                      type="password"
+                      value={sharePassword}
+                      onChange={(e) => setSharePassword(e.target.value)}
+                      placeholder="Enter password"
+                    />
+                  </div>
+                )}
                 
                 {shareLink ? (
                   <div className="flex items-center gap-2">
@@ -325,7 +374,7 @@ const Document = () => {
                 ) : (
                   <Button 
                     onClick={handleGenerateShareLink}
-                    disabled={createShareLink.isPending}
+                    disabled={createShareLink.isPending || (isPasswordProtected && !sharePassword)}
                   >
                     {createShareLink.isPending ? "Generating..." : "Generate link"}
                   </Button>

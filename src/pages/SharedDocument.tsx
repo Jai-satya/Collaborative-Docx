@@ -9,8 +9,10 @@ import Comments from "@/components/Comments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Lock } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { verifyPassword } from "@/utils/password-utils";
 
 interface Presence {
   user: {
@@ -30,6 +32,8 @@ interface DocumentShare {
   created_by: string;
   created_at: string;
   updated_at: string;
+  is_password_protected: boolean;
+  password_hash: string | null;
   document: {
     id: string;
     title: string;
@@ -54,6 +58,11 @@ const SharedDocument = () => {
   const [permissionLevel, setPermissionLevel] = useState<string | null>(null);
   const [activeUsers, setActiveUsers] = useState<Presence[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState("");
+  const [isPasswordProtected, setIsPasswordProtected] = useState(false);
+  const [isPasswordVerified, setIsPasswordVerified] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
 
   // Check if user is authenticated
   useEffect(() => {
@@ -75,6 +84,13 @@ const SharedDocument = () => {
         .single();
       
       if (error) throw error;
+      
+      if (data.is_password_protected) {
+        setIsPasswordProtected(true);
+      } else {
+        setIsPasswordVerified(true);
+      }
+      
       return data as DocumentShare;
     },
     enabled: !!token,
@@ -82,17 +98,17 @@ const SharedDocument = () => {
 
   // Update state when share data is fetched
   useEffect(() => {
-    if (shareData) {
+    if (shareData && isPasswordVerified) {
       setDocumentId(shareData.document_id);
       setPermissionLevel(shareData.permission_level);
       setTitle(shareData.document.title);
       setContent(shareData.document.content || '');
     }
-  }, [shareData]);
+  }, [shareData, isPasswordVerified]);
 
   // Set up real-time document subscription
   useEffect(() => {
-    if (!documentId) return;
+    if (!documentId || !isPasswordVerified) return;
 
     const channel = supabase
       .channel(`document:${documentId}`)
@@ -113,11 +129,11 @@ const SharedDocument = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [documentId, queryClient, token]);
+  }, [documentId, queryClient, token, isPasswordVerified]);
 
   // Set up presence channel for collaborative features
   useEffect(() => {
-    if (!documentId) return;
+    if (!documentId || !isPasswordVerified) return;
     let presenceChannel: ReturnType<typeof supabase.channel>;
 
     const setupPresence = async () => {
@@ -162,7 +178,7 @@ const SharedDocument = () => {
         supabase.removeChannel(presenceChannel);
       }
     };
-  }, [documentId]);
+  }, [documentId, isPasswordVerified]);
 
   const updateDocument = useMutation({
     mutationFn: async ({ title, content }: { title: string; content: string }) => {
@@ -219,6 +235,31 @@ const SharedDocument = () => {
     updateDocument.mutate({ title, content });
   };
 
+  const handleVerifyPassword = async () => {
+    if (!shareData || !password) return;
+
+    setIsVerifying(true);
+    setPasswordError("");
+
+    try {
+      const isValid = await verifyPassword(password, shareData.password_hash || "");
+      
+      if (isValid) {
+        setIsPasswordVerified(true);
+        setDocumentId(shareData.document_id);
+        setPermissionLevel(shareData.permission_level);
+        setTitle(shareData.document.title);
+        setContent(shareData.document.content || '');
+      } else {
+        setPasswordError("Incorrect password");
+      }
+    } catch (error) {
+      setPasswordError("Error verifying password");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   if (shareLoading) {
     return <div className="container mx-auto py-8 px-4">Loading document...</div>;
   }
@@ -253,6 +294,61 @@ const SharedDocument = () => {
         <div className="mt-4">
           <Button onClick={() => navigate("/auth")}>Log In</Button>
         </div>
+      </div>
+    );
+  }
+
+  if (isPasswordProtected && !isPasswordVerified) {
+    return (
+      <div className="container mx-auto py-8 px-4 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Lock className="mr-2 h-5 w-5" /> Password Protected Document
+            </CardTitle>
+            <CardDescription>
+              This document requires a password to access
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="document-password">Password</Label>
+                <Input
+                  id="document-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleVerifyPassword();
+                    }
+                  }}
+                />
+              </div>
+              
+              {passwordError && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{passwordError}</AlertDescription>
+                </Alert>
+              )}
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-between">
+            <Button variant="outline" onClick={() => navigate("/dashboard")}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleVerifyPassword} 
+              disabled={!password || isVerifying}
+            >
+              {isVerifying ? "Verifying..." : "Access Document"}
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     );
   }
