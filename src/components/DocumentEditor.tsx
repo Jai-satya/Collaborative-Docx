@@ -32,6 +32,7 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
   const [cursors, setCursors] = useState<CursorPosition[]>([]);
   const { toast } = useToast();
   const [userColor, setUserColor] = useState('');
+  const [channel, setChannel] = useState<ReturnType<typeof supabase.channel> | null>(null);
   
   const editor = useEditor({
     extensions: [StarterKit],
@@ -43,11 +44,15 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
     },
     onCreate: ({ editor }) => {
       // Fix: Store the event listener handler so it can be properly removed later
-      const editorDom = editor.view.dom;
-      editorDom.addEventListener('mousemove', handleCursorMove);
+      if (editor && editor.view && editor.view.dom) {
+        const editorDom = editor.view.dom;
+        editorDom.addEventListener('mousemove', handleCursorMove);
+      }
     },
     onDestroy: ({ editor }) => {
-      editor.view.dom.removeEventListener('mousemove', handleCursorMove);
+      if (editor && editor.view && editor.view.dom) {
+        editor.view.dom.removeEventListener('mousemove', handleCursorMove);
+      }
     },
   });
 
@@ -90,8 +95,6 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
       },
     });
   }, 50);
-
-  const [channel, setChannel] = useState<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     if (!documentId) return;
