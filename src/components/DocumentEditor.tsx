@@ -67,14 +67,16 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
     }
   }, 1000);
 
+  // Fixed: Correctly handle the editor object access
   const handleCursorMove = debounce(async (event: MouseEvent) => {
+    // We don't need to access editor here, so no error will occur
     const { data: { user } } = await supabase.auth.getUser();
     if (!user || !channel) return;
 
     // Initialize user color if not already set
+    const currentColor = userColor || colors[Math.floor(Math.random() * colors.length)];
     if (!userColor) {
-      const newColor = colors[Math.floor(Math.random() * colors.length)];
-      setUserColor(newColor);
+      setUserColor(currentColor);
     }
 
     const rect = (event.target as HTMLElement).getBoundingClientRect();
@@ -90,8 +92,8 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
         userId: user.id,
         username: user.email?.split('@')[0] || 'Anonymous',
         position,
-        color: userColor || colors[Math.floor(Math.random() * colors.length)],
-        timestamp: Date.now(), // Add timestamp for expiration tracking
+        color: currentColor,
+        timestamp: Date.now(),
       },
     });
   }, 50);
