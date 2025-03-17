@@ -10,13 +10,13 @@ interface RemoteCursorsProps {
 const RemoteCursor = memo(({ cursor }: { cursor: CursorPosition }) => {
   return (
     <div
-      className="absolute pointer-events-none"
+      className="absolute pointer-events-none will-change-transform"
       style={{
         top: cursor.position.top,
         left: cursor.position.left,
         transform: 'translate(-50%, -50%)',
         zIndex: 50,
-        transition: 'top 0.1s ease, left 0.1s ease', // Smooth cursor movement
+        transition: 'top 0.08s ease, left 0.08s ease', // Faster cursor transitions
       }}
     >
       <div
@@ -43,9 +43,12 @@ const RemoteCursor = memo(({ cursor }: { cursor: CursorPosition }) => {
 RemoteCursor.displayName = 'RemoteCursor';
 
 const RemoteCursors: React.FC<RemoteCursorsProps> = ({ cursors }) => {
+  // Don't render more than a reasonable number of cursors to maintain performance
+  const visibleCursors = cursors.slice(0, 10); 
+  
   return (
     <>
-      {cursors.map((cursor) => (
+      {visibleCursors.map((cursor) => (
         <RemoteCursor key={cursor.userId} cursor={cursor} />
       ))}
     </>

@@ -40,17 +40,15 @@ export const createCursorTracker = (channel: ReturnType<typeof supabase.channel>
     const userPresence = presenceState[user.id];
     
     // In Supabase Realtime, the state we track becomes available in the presence state
-    // The previous implementation was incorrect - we need to check the state we tracked
     let lastPosition = undefined;
     
     // Safely check if the user has previous position data
     if (userPresence && Array.isArray(userPresence) && userPresence.length > 0) {
-      // The state we track with channel.track() becomes available here
       // Extract cursor position from the appropriate property
-      const presenceData = userPresence[0] as any; // Type as any for now to access properties
+      const presenceData = userPresence[0];
       if (presenceData && typeof presenceData === 'object') {
         // Try to get position from where we track it
-        lastPosition = presenceData.position;
+        lastPosition = 'position' in presenceData ? (presenceData as any).position : undefined;
       }
     }
 
@@ -71,5 +69,5 @@ export const createCursorTracker = (channel: ReturnType<typeof supabase.channel>
         },
       });
     }
-  }, 25); // Reduced to 25ms for smoother cursor movement
+  }, 16); // Reduced to 16ms (60fps) for smoother cursor movement
 };
