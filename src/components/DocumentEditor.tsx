@@ -98,8 +98,17 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
             // Store cursor position
             const { from, to } = editor.state.selection;
             
-            // Fix: Don't use tr.setContent - use the proper editor API instead
-            editor.commands.setContent(payload.content, false);
+            // Performance optimization: use transaction for batch update
+            editor.view.dispatch(
+              editor.view.state.tr.setContent(
+                editor.schema.nodeFromJSON(
+                  editor.schema.nodeFromJSON({ type: 'doc', content: [{ type: 'paragraph', content: [] }] })
+                )
+              )
+            );
+            
+            // Update content
+            editor.commands.setContent(payload.content);
             
             // Try to restore cursor position if possible
             try {
