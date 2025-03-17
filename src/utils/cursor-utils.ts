@@ -35,15 +35,25 @@ export const createCursorTracker = (channel: ReturnType<typeof supabase.channel>
     // Only send position update if it's significantly different from last one
     // This helps reduce network traffic
     const presenceState = channel.presenceState();
+    
     // Check if there's presence data for this user
     const userPresence = presenceState[user.id];
     
-    // Safely check if the user has previous position data
-    const lastPosition = userPresence && 
-                         Array.isArray(userPresence) && 
-                         userPresence.length > 0 && 
-                         userPresence[0].payload?.position;
+    // In Supabase Realtime, the state we track becomes available in the presence state
+    // The previous implementation was incorrect - we need to check the state we tracked
+    let lastPosition = undefined;
     
+    // Safely check if the user has previous position data
+    if (userPresence && Array.isArray(userPresence) && userPresence.length > 0) {
+      // The state we track with channel.track() becomes available here
+      // Extract cursor position from the appropriate property
+      const presenceData = userPresence[0] as any; // Type as any for now to access properties
+      if (presenceData && typeof presenceData === 'object') {
+        // Try to get position from where we track it
+        lastPosition = presenceData.position;
+      }
+    }
+
     const hasMovedSignificantly = !lastPosition || 
       Math.abs(lastPosition.top - position.top) > 5 || 
       Math.abs(lastPosition.left - position.left) > 5;
