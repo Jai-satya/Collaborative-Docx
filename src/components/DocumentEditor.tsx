@@ -1,12 +1,16 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { Button } from "@/components/ui/button";
-import { Bold, Italic, List, ListOrdered } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import Underline from '@tiptap/extension-underline';
+import TextAlign from '@tiptap/extension-text-align';
+import Placeholder from '@tiptap/extension-placeholder';
 import { debounce } from 'lodash';
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import EditorToolbar from './EditorToolbar';
+import RemoteCursors from './RemoteCursors';
+import { useCursors } from '@/hooks/useCursors';
 
 interface DocumentEditorProps {
   content: string;
@@ -14,47 +18,32 @@ interface DocumentEditorProps {
   documentId: string;
 }
 
-interface CursorPosition {
-  userId: string;
-  username: string;
-  position: { top: number; left: number };
-  color: string;
-  timestamp?: number; // Add optional timestamp property
-}
-
-const colors = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', 
-  '#FFEEAD', '#D4A5A5', '#9B59B6', '#3498DB'
-];
-
 const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) => {
   const [localContent, setLocalContent] = useState(content);
-  const [cursors, setCursors] = useState<CursorPosition[]>([]);
   const { toast } = useToast();
-  const [userColor, setUserColor] = useState('');
   const [channel, setChannel] = useState<ReturnType<typeof supabase.channel> | null>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
   
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: [
+      StarterKit,
+      Underline,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      Placeholder.configure({
+        placeholder: 'Start writing your document here...',
+      }),
+    ],
     content: localContent,
     onUpdate: ({ editor }) => {
       const newContent = editor.getHTML();
       setLocalContent(newContent);
       debouncedUpdate(newContent);
     },
-    onCreate: ({ editor }) => {
-      // Fix: Store the event listener handler so it can be properly removed later
-      if (editor && editor.view && editor.view.dom) {
-        const editorDom = editor.view.dom;
-        editorDom.addEventListener('mousemove', handleCursorMove);
-      }
-    },
-    onDestroy: ({ editor }) => {
-      if (editor && editor.view && editor.view.dom) {
-        editor.view.dom.removeEventListener('mousemove', handleCursorMove);
-      }
-    },
   });
+
+  const { cursors } = useCursors(documentId, editorRef);
 
   const debouncedUpdate = debounce((newContent: string) => {
     onUpdate(newContent);
@@ -65,38 +54,7 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
         payload: { content: newContent },
       });
     }
-  }, 1000);
-
-  // Fixed: Correctly handle the editor object access
-  const handleCursorMove = debounce(async (event: MouseEvent) => {
-    // We don't need to access editor here, so no error will occur
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !channel) return;
-
-    // Initialize user color if not already set
-    const currentColor = userColor || colors[Math.floor(Math.random() * colors.length)];
-    if (!userColor) {
-      setUserColor(currentColor);
-    }
-
-    const rect = (event.target as HTMLElement).getBoundingClientRect();
-    const position = {
-      top: event.clientY - rect.top,
-      left: event.clientX - rect.left,
-    };
-
-    channel.send({
-      type: 'broadcast',
-      event: 'cursor_move',
-      payload: {
-        userId: user.id,
-        username: user.email?.split('@')[0] || 'Anonymous',
-        position,
-        color: currentColor,
-        timestamp: Date.now(),
-      },
-    });
-  }, 50);
+  }, 500); // Reduced debounce time for better responsiveness
 
   useEffect(() => {
     if (!documentId) return;
@@ -108,15 +66,20 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
         if (payload.content !== localContent) {
           setLocalContent(payload.content);
           if (editor) {
+            // Store cursor position
+            const { from, to } = editor.state.selection;
+            
+            // Update content
             editor.commands.setContent(payload.content);
+            
+            // Try to restore cursor position if possible
+            try {
+              editor.commands.setTextSelection({ from, to });
+            } catch (e) {
+              // If position is no longer valid, just let it be
+            }
           }
         }
-      })
-      .on('broadcast', { event: 'cursor_move' }, ({ payload }) => {
-        setCursors(prev => {
-          const filtered = prev.filter(c => c.userId !== payload.userId);
-          return [...filtered, { ...payload, timestamp: Date.now() }];
-        });
       })
       .subscribe();
 
@@ -136,87 +99,19 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
     }
   }, [content, editor]);
 
-  useEffect(() => {
-    const cleanup = setInterval(() => {
-      setCursors(prev => prev.filter(c => 
-        c.timestamp && Date.now() - c.timestamp < 5000
-      ));
-    }, 5000);
-
-    return () => clearInterval(cleanup);
-  }, []);
-
-  // Initialize user color on first render
-  useEffect(() => {
-    if (!userColor) {
-      setUserColor(colors[Math.floor(Math.random() * colors.length)]);
-    }
-  }, [userColor]);
-
   if (!editor) {
-    return null;
+    return <div className="border rounded-lg p-4">Loading editor...</div>;
   }
 
   return (
     <div className="border rounded-lg overflow-hidden relative">
-      <div className="border-b bg-gray-50 p-2 flex gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          className={editor.isActive('bold') ? 'bg-gray-200' : ''}
-        >
-          <Bold className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          className={editor.isActive('italic') ? 'bg-gray-200' : ''}
-        >
-          <Italic className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          className={editor.isActive('bulletList') ? 'bg-gray-200' : ''}
-        >
-          <List className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          className={editor.isActive('orderedList') ? 'bg-gray-200' : ''}
-        >
-          <ListOrdered className="h-4 w-4" />
-        </Button>
-      </div>
-      <div className="relative">
-        <EditorContent editor={editor} className="p-4 min-h-[200px] prose max-w-none" />
-        {cursors.map((cursor) => (
-          <div
-            key={cursor.userId}
-            className="absolute pointer-events-none"
-            style={{
-              top: cursor.position.top,
-              left: cursor.position.left,
-              transform: 'translate(-50%, -50%)',
-            }}
-          >
-            <div
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: cursor.color }}
-            />
-            <div
-              className="px-2 py-1 rounded text-xs text-white mt-1"
-              style={{ backgroundColor: cursor.color }}
-            >
-              {cursor.username}
-            </div>
-          </div>
-        ))}
+      <EditorToolbar editor={editor} />
+      <div className="relative" ref={editorRef}>
+        <EditorContent 
+          editor={editor} 
+          className="p-4 min-h-[300px] prose max-w-none outline-none focus:outline-none"
+        />
+        <RemoteCursors cursors={cursors} />
       </div>
     </div>
   );
