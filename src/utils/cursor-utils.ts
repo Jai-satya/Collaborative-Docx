@@ -34,7 +34,16 @@ export const createCursorTracker = (channel: ReturnType<typeof supabase.channel>
 
     // Only send position update if it's significantly different from last one
     // This helps reduce network traffic
-    const lastPosition = channel.presenceState()[user.id]?.position;
+    const presenceState = channel.presenceState();
+    // Check if there's presence data for this user
+    const userPresence = presenceState[user.id];
+    
+    // Safely check if the user has previous position data
+    const lastPosition = userPresence && 
+                         Array.isArray(userPresence) && 
+                         userPresence.length > 0 && 
+                         userPresence[0].payload?.position;
+    
     const hasMovedSignificantly = !lastPosition || 
       Math.abs(lastPosition.top - position.top) > 5 || 
       Math.abs(lastPosition.left - position.left) > 5;
