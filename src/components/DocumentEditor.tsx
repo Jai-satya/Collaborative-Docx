@@ -26,13 +26,21 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
   
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        history: {
+          depth: 100,
+          newGroupDelay: 500, // Reduce delay for more responsive undo/redo
+        },
+      }),
       Underline,
       TextAlign.configure({
         types: ['heading', 'paragraph'],
+        alignments: ['left', 'center', 'right'],
+        defaultAlignment: 'left',
       }),
       Placeholder.configure({
         placeholder: 'Start writing your document here...',
+        emptyEditorClass: 'is-editor-empty',
       }),
     ],
     content: localContent,
@@ -40,6 +48,11 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
       const newContent = editor.getHTML();
       setLocalContent(newContent);
       debouncedUpdate(newContent);
+    },
+    editorProps: {
+      attributes: {
+        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-xl focus:outline-none w-full max-w-none',
+      },
     },
   });
 
@@ -54,7 +67,7 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
         payload: { content: newContent },
       });
     }
-  }, 500); // Reduced debounce time for better responsiveness
+  }, 300); // Further reduced debounce time for better responsiveness
 
   useEffect(() => {
     if (!documentId) return;
@@ -99,6 +112,15 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
     }
   }, [content, editor]);
 
+  // Focus the editor when it loads
+  useEffect(() => {
+    if (editor) {
+      setTimeout(() => {
+        editor.commands.focus();
+      }, 100);
+    }
+  }, [editor]);
+
   if (!editor) {
     return <div className="border rounded-lg p-4">Loading editor...</div>;
   }
@@ -109,7 +131,7 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
       <div className="relative" ref={editorRef}>
         <EditorContent 
           editor={editor} 
-          className="p-4 min-h-[300px] prose max-w-none outline-none focus:outline-none"
+          className="p-4 min-h-[400px] prose max-w-none outline-none focus:outline-none overflow-auto" 
         />
         <RemoteCursors cursors={cursors} />
       </div>

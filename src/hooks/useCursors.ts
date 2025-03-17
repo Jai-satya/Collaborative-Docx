@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { CursorPosition, CURSOR_COLORS, createCursorTracker } from "@/utils/cursor-utils";
 
@@ -8,16 +7,29 @@ export const useCursors = (documentId: string, editorDomRef: React.RefObject<HTM
   const [userColor, setUserColor] = useState('');
   const [channel, setChannel] = useState<ReturnType<typeof supabase.channel> | null>(null);
 
-  // Initialize user color
+  // Initialize user color - stored in localStorage to keep it consistent
   useEffect(() => {
-    if (!userColor) {
-      setUserColor(CURSOR_COLORS[Math.floor(Math.random() * CURSOR_COLORS.length)]);
+    const storedColor = localStorage.getItem(`cursor-color-${documentId}`);
+    if (storedColor) {
+      setUserColor(storedColor);
+    } else {
+      const newColor = CURSOR_COLORS[Math.floor(Math.random() * CURSOR_COLORS.length)];
+      localStorage.setItem(`cursor-color-${documentId}`, newColor);
+      setUserColor(newColor);
     }
-  }, [userColor]);
+  }, [documentId]);
+
+  // Memoized cursor update function to prevent re-renders
+  const updateCursors = useCallback((payload: CursorPosition) => {
+    setCursors(prev => {
+      const filtered = prev.filter(c => c.userId !== payload.userId);
+      return [...filtered, { ...payload, timestamp: Date.now() }];
+    });
+  }, []);
 
   // Set up the cursor movement handler
   useEffect(() => {
-    if (!documentId || !editorDomRef.current) return;
+    if (!documentId || !editorDomRef.current || !channel) return;
 
     const cursorTracker = createCursorTracker(channel, userColor);
     
@@ -37,10 +49,7 @@ export const useCursors = (documentId: string, editorDomRef: React.RefObject<HTM
 
     newChannel
       .on('broadcast', { event: 'cursor_move' }, ({ payload }) => {
-        setCursors(prev => {
-          const filtered = prev.filter(c => c.userId !== payload.userId);
-          return [...filtered, { ...payload, timestamp: Date.now() }];
-        });
+        updateCursors(payload);
       })
       .subscribe();
 
@@ -49,7 +58,7 @@ export const useCursors = (documentId: string, editorDomRef: React.RefObject<HTM
     return () => {
       newChannel.unsubscribe();
     };
-  }, [documentId]);
+  }, [documentId, updateCursors]);
 
   // Clean up stale cursor positions
   useEffect(() => {
@@ -57,7 +66,7 @@ export const useCursors = (documentId: string, editorDomRef: React.RefObject<HTM
       setCursors(prev => prev.filter(c => 
         c.timestamp && Date.now() - c.timestamp < 5000
       ));
-    }, 5000);
+    }, 2000); // Less frequent cleanup
 
     return () => clearInterval(cleanup);
   }, []);

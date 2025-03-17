@@ -22,22 +22,35 @@ export const createCursorTracker = (channel: ReturnType<typeof supabase.channel>
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const rect = (event.target as HTMLElement).getBoundingClientRect();
+    // Get the element that was moused over
+    const targetElement = event.target as HTMLElement;
+    const rect = targetElement.getBoundingClientRect();
+    
+    // Calculate relative position within the editor
     const position = {
       top: event.clientY - rect.top,
       left: event.clientX - rect.left,
     };
 
-    channel.send({
-      type: 'broadcast',
-      event: 'cursor_move',
-      payload: {
-        userId: user.id,
-        username: user.email?.split('@')[0] || 'Anonymous',
-        position,
-        color: userColor,
-        timestamp: Date.now(),
-      },
-    });
-  }, 50);
+    // Only send position update if it's significantly different from last one
+    // This helps reduce network traffic
+    const lastPosition = channel.presenceState()[user.id]?.position;
+    const hasMovedSignificantly = !lastPosition || 
+      Math.abs(lastPosition.top - position.top) > 5 || 
+      Math.abs(lastPosition.left - position.left) > 5;
+
+    if (hasMovedSignificantly) {
+      channel.send({
+        type: 'broadcast',
+        event: 'cursor_move',
+        payload: {
+          userId: user.id,
+          username: user.email?.split('@')[0] || 'Anonymous',
+          position,
+          color: userColor,
+          timestamp: Date.now(),
+        },
+      });
+    }
+  }, 25); // Reduced to 25ms for smoother cursor movement
 };
