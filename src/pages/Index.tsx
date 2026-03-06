@@ -10,7 +10,9 @@ const Index = () => {
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session) {
         navigate("/dashboard");
       }
@@ -19,10 +21,26 @@ const Index = () => {
   }, [navigate]);
 
   const features = [
-    { icon: FileText, title: "Rich Editorial Writing", desc: "Beautiful typography with serif fonts, markdown shortcuts, and a distraction-free experience." },
-    { icon: Users, title: "Real-Time Collaboration", desc: "See cursors, edits, and presence of your team. Conflict resolution built in." },
-    { icon: Zap, title: "Lightning Fast", desc: "Optimized with debounced saves, local-first editing, and instant sync." },
-    { icon: Shield, title: "Secure Sharing", desc: "Password-protected links, granular permissions, and version history." },
+    {
+      icon: FileText,
+      title: "Rich Editorial Writing",
+      desc: "Beautiful typography with serif fonts, markdown shortcuts, and a distraction-free experience.",
+    },
+    {
+      icon: Users,
+      title: "Real-Time Collaboration",
+      desc: "See cursors, edits, and presence of your team. Conflict resolution built in.",
+    },
+    {
+      icon: Zap,
+      title: "Lightning Fast",
+      desc: "Optimized with debounced saves, local-first editing, and instant sync.",
+    },
+    {
+      icon: Shield,
+      title: "Secure Sharing",
+      desc: "Password-protected links, granular permissions, and version history.",
+    },
   ];
 
   return (
@@ -56,8 +74,8 @@ const Index = () => {
             <span className="text-primary italic">together.</span>
           </h1>
           <p className="font-body text-lg md:text-xl text-muted-foreground max-w-xl mx-auto leading-relaxed mb-10">
-            A collaborative writing experience designed for clarity, elegance, and flow. 
-            Where every word feels intentional.
+            A collaborative writing experience designed for clarity, elegance,
+            and flow. Where every word feels intentional.
           </p>
           <div className="flex items-center justify-center gap-4">
             <Button
@@ -80,14 +98,22 @@ const Index = () => {
               key={f.title}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 + i * 0.1, ease: [0.22, 1, 0.36, 1] }}
+              transition={{
+                duration: 0.5,
+                delay: 0.2 + i * 0.1,
+                ease: [0.22, 1, 0.36, 1],
+              }}
               className="group p-6 rounded-xl border border-border/60 bg-card hover:shadow-elevated transition-all duration-300"
             >
               <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center mb-4">
                 <f.icon className="h-5 w-5 text-accent-foreground" />
               </div>
-              <h3 className="font-display text-lg font-semibold mb-2 text-card-foreground">{f.title}</h3>
-              <p className="font-body text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
+              <h3 className="font-display text-lg font-semibold mb-2 text-card-foreground">
+                {f.title}
+              </h3>
+              <p className="font-body text-sm text-muted-foreground leading-relaxed">
+                {f.desc}
+              </p>
             </motion.div>
           ))}
         </div>
