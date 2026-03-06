@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -12,7 +11,14 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AlertCircle, Lock } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { verifyPassword } from "@/utils/password-utils";
 
 interface Presence {
@@ -23,6 +29,11 @@ interface Presence {
   };
   lastActive: string;
   cursor?: { x: number; y: number };
+}
+
+interface PresencePayload {
+  user: Presence["user"];
+  cursor?: Presence["cursor"];
 }
 
 interface DocumentShare {
@@ -75,23 +86,27 @@ const SharedDocument = () => {
   }, []);
 
   // Fetch the document share information
-  const { data: shareData, isLoading: shareLoading, error: shareError } = useQuery({
-    queryKey: ['document-share', token],
+  const {
+    data: shareData,
+    isLoading: shareLoading,
+    error: shareError,
+  } = useQuery({
+    queryKey: ["document-share", token],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('document_shares')
-        .select('*, document:document_id(*)')
-        .eq('share_token', token)
+        .from("document_shares")
+        .select("*, document:document_id(*)")
+        .eq("share_token", token)
         .single();
-      
+
       if (error) throw error;
-      
+
       if (data.is_password_protected) {
         setIsPasswordProtected(true);
       } else {
         setIsPasswordVerified(true);
       }
-      
+
       return data as DocumentShare;
     },
     enabled: !!token,
@@ -103,7 +118,7 @@ const SharedDocument = () => {
       setDocumentId(shareData.document_id);
       setPermissionLevel(shareData.permission_level);
       setTitle(shareData.document.title);
-      setContent(shareData.document.content || '');
+      setContent(shareData.document.content || "");
     }
   }, [shareData, isPasswordVerified]);
 
@@ -114,16 +129,18 @@ const SharedDocument = () => {
     const channel = supabase
       .channel(`document:${documentId}`)
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'documents',
+          event: "*",
+          schema: "public",
+          table: "documents",
           filter: `id=eq.${documentId}`,
         },
-        (payload) => {
-          queryClient.invalidateQueries({ queryKey: ['document-share', token] });
-        }
+        () => {
+          queryClient.invalidateQueries({
+            queryKey: ["document-share", token],
+          });
+        },
       )
       .subscribe();
 
@@ -138,7 +155,9 @@ const SharedDocument = () => {
     let presenceChannel: ReturnType<typeof supabase.channel>;
 
     const setupPresence = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       presenceChannel = supabase.channel(`presence:${documentId}`, {
@@ -150,21 +169,26 @@ const SharedDocument = () => {
       });
 
       presenceChannel
-        .on('presence', { event: 'sync' }, () => {
+        .on("presence", { event: "sync" }, () => {
           const state = presenceChannel.presenceState();
-          const users = Object.values(state).flat().map((p: any) => ({
-            user: p.user,
-            lastActive: new Date().toISOString(),
-            cursor: p.cursor,
-          }));
+          const users = Object.values(state)
+            .flat()
+            .map((presence) => {
+              const payload = presence as PresencePayload;
+              return {
+                user: payload.user,
+                lastActive: new Date().toISOString(),
+                cursor: payload.cursor,
+              };
+            });
           setActiveUsers(users);
         })
         .subscribe(async (status) => {
-          if (status === 'SUBSCRIBED') {
+          if (status === "SUBSCRIBED") {
             await presenceChannel.track({
               user: {
                 id: user.id,
-                name: user.email?.split('@')[0] || 'Anonymous',
+                name: user.email?.split("@")[0] || "Anonymous",
                 avatar: user.user_metadata?.avatar_url,
               },
             });
@@ -182,19 +206,25 @@ const SharedDocument = () => {
   }, [documentId, isPasswordVerified]);
 
   const updateDocument = useMutation({
-    mutationFn: async ({ title, content }: { title: string; content: string }) => {
+    mutationFn: async ({
+      title,
+      content,
+    }: {
+      title: string;
+      content: string;
+    }) => {
       if (!documentId) throw new Error("Document ID is missing");
-      
+
       const { error } = await supabase
-        .from('documents')
+        .from("documents")
         .update({ title, content, updated_at: new Date().toISOString() })
-        .eq('id', documentId);
-      
+        .eq("id", documentId);
+
       if (error) throw error;
     },
     onSuccess: () => {
       if (documentId) {
-        queryClient.invalidateQueries({ queryKey: ['document-share', token] });
+        queryClient.invalidateQueries({ queryKey: ["document-share", token] });
       }
       toast({
         title: "Success",
@@ -211,7 +241,7 @@ const SharedDocument = () => {
   });
 
   const handleContentUpdate = (newContent: string) => {
-    if (permissionLevel === 'view') {
+    if (permissionLevel === "view") {
       toast({
         variant: "destructive",
         title: "Permission denied",
@@ -219,12 +249,12 @@ const SharedDocument = () => {
       });
       return;
     }
-    
+
     setContent(newContent);
   };
 
   const handleSave = () => {
-    if (permissionLevel === 'view') {
+    if (permissionLevel === "view") {
       toast({
         variant: "destructive",
         title: "Permission denied",
@@ -232,7 +262,7 @@ const SharedDocument = () => {
       });
       return;
     }
-    
+
     updateDocument.mutate({ title, content });
   };
 
@@ -243,14 +273,17 @@ const SharedDocument = () => {
     setPasswordError("");
 
     try {
-      const isValid = await verifyPassword(password, shareData.password_hash || "");
-      
+      const isValid = await verifyPassword(
+        password,
+        shareData.password_hash || "",
+      );
+
       if (isValid) {
         setIsPasswordVerified(true);
         setDocumentId(shareData.document_id);
         setPermissionLevel(shareData.permission_level);
         setTitle(shareData.document.title);
-        setContent(shareData.document.content || '');
+        setContent(shareData.document.content || "");
       } else {
         setPasswordError("Incorrect password");
       }
@@ -262,7 +295,9 @@ const SharedDocument = () => {
   };
 
   if (shareLoading) {
-    return <div className="container mx-auto py-8 px-4">Loading document...</div>;
+    return (
+      <div className="container mx-auto py-8 px-4">Loading document...</div>
+    );
   }
 
   if (shareError) {
@@ -276,7 +311,9 @@ const SharedDocument = () => {
           </AlertDescription>
         </Alert>
         <div className="mt-4">
-          <Button onClick={() => navigate("/dashboard")}>Back to Dashboard</Button>
+          <Button onClick={() => navigate("/dashboard")}>
+            Back to Dashboard
+          </Button>
         </div>
       </div>
     );
@@ -322,13 +359,13 @@ const SharedDocument = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter password"
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       handleVerifyPassword();
                     }
                   }}
                 />
               </div>
-              
+
               {passwordError && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
@@ -342,8 +379,8 @@ const SharedDocument = () => {
             <Button variant="outline" onClick={() => navigate("/dashboard")}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleVerifyPassword} 
+            <Button
+              onClick={handleVerifyPassword}
               disabled={!password || isVerifying}
             >
               {isVerifying ? "Verifying..." : "Access Document"}
@@ -357,7 +394,7 @@ const SharedDocument = () => {
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="mb-2">
-        {permissionLevel === 'view' && (
+        {permissionLevel === "view" && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>View Only</AlertTitle>
@@ -374,7 +411,7 @@ const SharedDocument = () => {
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Document Title"
             className="text-2xl font-bold"
-            readOnly={permissionLevel === 'view'}
+            readOnly={permissionLevel === "view"}
           />
         </div>
         <div className="flex items-center gap-4">
@@ -383,14 +420,18 @@ const SharedDocument = () => {
               <div key={presence.user.id} className="relative">
                 <Avatar className="border-2 border-white">
                   <AvatarImage src={presence.user.avatar} />
-                  <AvatarFallback>{presence.user.name[0].toUpperCase()}</AvatarFallback>
+                  <AvatarFallback>
+                    {presence.user.name[0].toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
                 <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
               </div>
             ))}
           </div>
-          <Button onClick={() => navigate("/dashboard")}>Back to Dashboard</Button>
-          {permissionLevel === 'edit' && (
+          <Button onClick={() => navigate("/dashboard")}>
+            Back to Dashboard
+          </Button>
+          {permissionLevel === "edit" && (
             <Button onClick={handleSave} disabled={updateDocument.isPending}>
               {updateDocument.isPending ? "Saving..." : "Save"}
             </Button>
@@ -400,16 +441,14 @@ const SharedDocument = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
           {documentId && (
-            <DocumentEditor 
-              content={content} 
+            <DocumentEditor
+              content={content}
               onUpdate={handleContentUpdate}
               documentId={documentId}
             />
           )}
         </div>
-        <div>
-          {documentId && <Comments documentId={documentId} />}
-        </div>
+        <div>{documentId && <Comments documentId={documentId} />}</div>
       </div>
     </div>
   );

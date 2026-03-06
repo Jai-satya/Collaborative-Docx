@@ -7,6 +7,9 @@ import { useToast } from "@/components/ui/use-toast";
 import DocumentList from "@/components/DocumentList";
 import { Plus, LogOut, FileText } from "lucide-react";
 import { motion } from "framer-motion";
+import type { Tables } from "@/integrations/supabase/types";
+
+type DocumentRow = Tables<"documents">;
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -15,11 +18,17 @@ const Dashboard = () => {
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) {
         navigate("/auth");
       } else {
-        setUserName(session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "Writer");
+        setUserName(
+          session.user.user_metadata?.full_name ||
+            session.user.email?.split("@")[0] ||
+            "Writer",
+        );
       }
     };
     checkUser();
@@ -32,21 +41,27 @@ const Dashboard = () => {
 
   const createDocument = useMutation({
     mutationFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
       const { data, error } = await supabase
-        .from('documents')
-        .insert([{ title: 'Untitled Document', created_by: user.id }])
+        .from("documents")
+        .insert([{ title: "Untitled Document", created_by: user.id }])
         .select()
         .single();
       if (error) throw error;
       return data;
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: DocumentRow) => {
       navigate(`/documents/${data.id}`);
     },
     onError: () => {
-      toast({ variant: "destructive", title: "Error", description: "Failed to create document" });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create document",
+      });
     },
   });
 
@@ -56,9 +71,13 @@ const Dashboard = () => {
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="font-display text-xl font-bold tracking-tight text-foreground">Inkwell</h1>
+            <h1 className="font-display text-xl font-bold tracking-tight text-foreground">
+              Inkwell
+            </h1>
             <span className="text-border">|</span>
-            <span className="font-ui text-sm text-muted-foreground">Welcome, {userName}</span>
+            <span className="font-ui text-sm text-muted-foreground">
+              Welcome, {userName}
+            </span>
           </div>
           <div className="flex items-center gap-3">
             <Button
@@ -69,7 +88,12 @@ const Dashboard = () => {
               <Plus className="h-4 w-4 mr-2" />
               New Document
             </Button>
-            <Button variant="ghost" size="icon" onClick={handleSignOut} className="text-muted-foreground hover:text-foreground">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleSignOut}
+              className="text-muted-foreground hover:text-foreground"
+            >
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
@@ -85,7 +109,9 @@ const Dashboard = () => {
         >
           <div className="flex items-center gap-3 mb-8">
             <FileText className="h-5 w-5 text-primary" />
-            <h2 className="font-display text-2xl font-semibold text-foreground">Your Documents</h2>
+            <h2 className="font-display text-2xl font-semibold text-foreground">
+              Your Documents
+            </h2>
           </div>
           <DocumentList />
         </motion.div>

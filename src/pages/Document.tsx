@@ -10,11 +10,19 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowLeft, Save, Check } from "lucide-react";
 import { motion } from "framer-motion";
+import type { Tables } from "@/integrations/supabase/types";
 
 interface Presence {
   user: { id: string; name: string; avatar?: string };
   lastActive: string;
   cursor?: { x: number; y: number };
+}
+
+type DocumentRow = Tables<"documents">;
+
+interface PresencePayload {
+  user: Presence["user"];
+  cursor?: Presence["cursor"];
 }
 
 const Document = () => {
@@ -28,12 +36,12 @@ const Document = () => {
   const [saved, setSaved] = useState(false);
 
   const { data: document, isLoading } = useQuery({
-    queryKey: ['document', id],
+    queryKey: ["document", id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('documents')
-        .select('*')
-        .eq('id', id)
+        .from("documents")
+        .select("*")
+        .eq("id", id)
         .single();
       if (error) throw error;
       return data;
@@ -43,8 +51,9 @@ const Document = () => {
 
   useEffect(() => {
     if (document) {
-      setTitle((document as any).title);
-      setContent((document as any).content || '');
+      const typedDocument = document as DocumentRow;
+      setTitle(typedDocument.title);
+      setContent(typedDocument.content || "");
     }
   }, [document]);
 
@@ -52,38 +61,56 @@ const Document = () => {
   useEffect(() => {
     const channel = supabase
       .channel(`document:${id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'documents', filter: `id=eq.${id}` }, () => {
-        queryClient.invalidateQueries({ queryKey: ['document', id] });
-      })
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "documents",
+          filter: `id=eq.${id}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["document", id] });
+        },
+      )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [id, queryClient]);
 
   // Presence channel
   useEffect(() => {
     let presenceChannel: ReturnType<typeof supabase.channel>;
     const setupPresence = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
       presenceChannel = supabase.channel(`presence:${id}`, {
         config: { presence: { key: user.id } },
       });
       presenceChannel
-        .on('presence', { event: 'sync' }, () => {
+        .on("presence", { event: "sync" }, () => {
           const state = presenceChannel.presenceState();
-          const users = Object.values(state).flat().map((p: any) => ({
-            user: p.user,
-            lastActive: new Date().toISOString(),
-            cursor: p.cursor,
-          }));
+          const users = Object.values(state)
+            .flat()
+            .map((presence) => {
+              const payload = presence as PresencePayload;
+              return {
+                user: payload.user,
+                lastActive: new Date().toISOString(),
+                cursor: payload.cursor,
+              };
+            });
           setActiveUsers(users);
         })
         .subscribe(async (status) => {
-          if (status === 'SUBSCRIBED') {
+          if (status === "SUBSCRIBED") {
             await presenceChannel.track({
               user: {
                 id: user.id,
-                name: user.email?.split('@')[0] || 'Anonymous',
+                name: user.email?.split("@")[0] || "Anonymous",
                 avatar: user.user_metadata?.avatar_url,
               },
             });
@@ -91,24 +118,36 @@ const Document = () => {
         });
     };
     setupPresence();
-    return () => { if (presenceChannel!) supabase.removeChannel(presenceChannel); };
+    return () => {
+      if (presenceChannel!) supabase.removeChannel(presenceChannel);
+    };
   }, [id]);
 
   const updateDocument = useMutation({
-    mutationFn: async ({ title, content }: { title: string; content: string }) => {
+    mutationFn: async ({
+      title,
+      content,
+    }: {
+      title: string;
+      content: string;
+    }) => {
       const { error } = await supabase
-        .from('documents')
+        .from("documents")
         .update({ title, content, updated_at: new Date().toISOString() })
-        .eq('id', id);
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['document', id] });
+      queryClient.invalidateQueries({ queryKey: ["document", id] });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     },
     onError: () => {
-      toast({ variant: "destructive", title: "Error", description: "Failed to save document" });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to save document",
+      });
     },
   });
 
@@ -119,7 +158,9 @@ const Document = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="font-ui text-sm text-muted-foreground">Loading document...</p>
+          <p className="font-ui text-sm text-muted-foreground">
+            Loading document...
+          </p>
         </div>
       </div>
     );
@@ -150,7 +191,10 @@ const Document = () => {
             {activeUsers.length > 0 && (
               <div className="flex -space-x-1.5 mr-1">
                 {activeUsers.slice(0, 4).map((presence) => (
-                  <Avatar key={presence.user.id} className="h-7 w-7 border-2 border-background">
+                  <Avatar
+                    key={presence.user.id}
+                    className="h-7 w-7 border-2 border-background"
+                  >
                     <AvatarImage src={presence.user.avatar} />
                     <AvatarFallback className="text-[10px] font-ui bg-primary text-primary-foreground">
                       {presence.user.name[0]?.toUpperCase()}
@@ -173,8 +217,16 @@ const Document = () => {
               size="sm"
               className="font-ui text-sm rounded-full gap-1.5 shadow-soft"
             >
-              {saved ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
-              {updateDocument.isPending ? "Saving..." : saved ? "Saved" : "Save"}
+              {saved ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : (
+                <Save className="h-3.5 w-3.5" />
+              )}
+              {updateDocument.isPending
+                ? "Saving..."
+                : saved
+                  ? "Saved"
+                  : "Save"}
             </Button>
           </div>
         </div>
@@ -189,7 +241,11 @@ const Document = () => {
       >
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 max-w-6xl mx-auto">
           <div>
-            <DocumentEditor content={content} onUpdate={setContent} documentId={id!} />
+            <DocumentEditor
+              content={content}
+              onUpdate={setContent}
+              documentId={id!}
+            />
           </div>
           <aside className="hidden lg:block">
             <div className="sticky top-20">
