@@ -4,89 +4,98 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 40 33% 98%;
+    --foreground: 20 20% 14%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 40 30% 97%;
+    --card-foreground: 20 20% 14%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 40 33% 99%;
+    --popover-foreground: 20 20% 14%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 24 70% 45%;
+    --primary-foreground: 40 33% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 35 30% 92%;
+    --secondary-foreground: 20 20% 20%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 35 20% 93%;
+    --muted-foreground: 20 10% 50%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 24 60% 92%;
+    --accent-foreground: 24 70% 30%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 30 20% 88%;
+    --input: 30 20% 88%;
+    --ring: 24 70% 45%;
 
-    --radius: 0.5rem;
+    --radius: 0.625rem;
 
-    --sidebar-background: 0 0% 98%;
+    --success: 142 60% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 20 20% 14%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-background: 35 25% 96%;
+    --sidebar-foreground: 20 15% 30%;
+    --sidebar-primary: 24 70% 45%;
+    --sidebar-primary-foreground: 40 33% 98%;
+    --sidebar-accent: 35 30% 92%;
+    --sidebar-accent-foreground: 20 15% 20%;
+    --sidebar-border: 30 20% 88%;
+    --sidebar-ring: 24 70% 45%;
 
-    --sidebar-primary: 240 5.9% 10%;
+    /* Editorial tokens */
+    --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
+    --font-body: 'Source Serif 4', Georgia, serif;
+    --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --shadow-soft: 0 1px 3px 0 hsl(20 20% 14% / 0.04), 0 1px 2px -1px hsl(20 20% 14% / 0.04);
+    --shadow-elevated: 0 4px 6px -1px hsl(20 20% 14% / 0.06), 0 2px 4px -2px hsl(20 20% 14% / 0.04);
+    --shadow-float: 0 10px 25px -5px hsl(20 20% 14% / 0.08), 0 8px 10px -6px hsl(20 20% 14% / 0.04);
+    --shadow-dramatic: 0 20px 50px -12px hsl(20 20% 14% / 0.15);
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 20 18% 8%;
+    --foreground: 35 20% 90%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 20 18% 10%;
+    --card-foreground: 35 20% 90%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 20 18% 10%;
+    --popover-foreground: 35 20% 90%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 24 70% 55%;
+    --primary-foreground: 20 18% 8%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 20 15% 16%;
+    --secondary-foreground: 35 20% 85%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 20 15% 16%;
+    --muted-foreground: 30 10% 55%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 24 40% 18%;
+    --accent-foreground: 24 70% 70%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 20 15% 18%;
+    --input: 20 15% 18%;
+    --ring: 24 70% 55%;
+
+    --sidebar-background: 20 18% 7%;
+    --sidebar-foreground: 35 20% 85%;
+    --sidebar-primary: 24 70% 55%;
+    --sidebar-primary-foreground: 20 18% 8%;
+    --sidebar-accent: 20 15% 14%;
+    --sidebar-accent-foreground: 35 20% 85%;
+    --sidebar-border: 20 15% 16%;
+    --sidebar-ring: 24 70% 55%;
   }
 }
 
@@ -96,6 +105,212 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-ui);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+}
+
+/* Editorial prose styling for the editor */
+@layer components {
+  .editorial-prose {
+    font-family: var(--font-body);
+    font-size: 1.125rem;
+    line-height: 1.8;
+    color: hsl(var(--foreground));
+    letter-spacing: 0.01em;
+  }
+
+  .editorial-prose h1 {
+    font-family: var(--font-display);
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    color: hsl(var(--foreground));
+  }
+
+  .editorial-prose h2 {
+    font-family: var(--font-display);
+    font-size: 1.875rem;
+    font-weight: 600;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    color: hsl(var(--foreground));
+  }
+
+  .editorial-prose h3 {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-top: 1.75rem;
+    margin-bottom: 0.5rem;
+    color: hsl(var(--foreground));
+  }
+
+  .editorial-prose p {
+    margin-bottom: 1.25rem;
+  }
+
+  .editorial-prose blockquote {
+    border-left: 3px solid hsl(var(--primary));
+    padding-left: 1.25rem;
+    margin: 1.5rem 0;
+    font-style: italic;
+    color: hsl(var(--muted-foreground));
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    line-height: 1.6;
+  }
+
+  .editorial-prose code {
+    background: hsl(var(--muted));
+    border-radius: 0.25rem;
+    padding: 0.15rem 0.4rem;
+    font-size: 0.9em;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  .editorial-prose pre {
+    background: hsl(var(--foreground));
+    color: hsl(var(--background));
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    margin: 1.5rem 0;
+  }
+
+  .editorial-prose pre code {
+    background: none;
+    padding: 0;
+    color: inherit;
+  }
+
+  .editorial-prose ul[data-type="taskList"] {
+    list-style: none;
+    padding: 0;
+  }
+
+  .editorial-prose ul[data-type="taskList"] li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .editorial-prose ul[data-type="taskList"] li label {
+    margin-top: 0.25rem;
+  }
+
+  .editorial-prose ul[data-type="taskList"] li label input[type="checkbox"] {
+    accent-color: hsl(var(--primary));
+    width: 1rem;
+    height: 1rem;
+    cursor: pointer;
+  }
+
+  .editorial-prose ul[data-type="taskList"] li div {
+    flex: 1;
+  }
+
+  .editorial-prose ul:not([data-type="taskList"]),
+  .editorial-prose ol {
+    padding-left: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .editorial-prose ul:not([data-type="taskList"]) li,
+  .editorial-prose ol li {
+    margin-bottom: 0.35rem;
+  }
+
+  .editorial-prose mark {
+    background-color: hsl(38 92% 80%);
+    border-radius: 0.15rem;
+    padding: 0.05rem 0.15rem;
+  }
+
+  .editorial-prose hr {
+    border: none;
+    border-top: 1px solid hsl(var(--border));
+    margin: 2rem 0;
+  }
+
+  .editorial-prose .is-editor-empty:first-child::before {
+    color: hsl(var(--muted-foreground));
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+    font-style: italic;
+  }
+
+  /* Slash command menu */
+  .slash-command-menu {
+    @apply bg-popover border border-border rounded-lg shadow-lg overflow-hidden;
+    min-width: 220px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  .slash-command-item {
+    @apply px-3 py-2.5 cursor-pointer flex items-center gap-3 text-sm transition-colors;
+    font-family: var(--font-ui);
+  }
+
+  .slash-command-item:hover,
+  .slash-command-item.is-selected {
+    @apply bg-accent text-accent-foreground;
+  }
+
+  .slash-command-item .icon {
+    @apply w-8 h-8 rounded-md flex items-center justify-center bg-muted text-muted-foreground;
+  }
+
+  /* Focus mode */
+  .focus-mode .ProseMirror > *:not(.has-focus) {
+    opacity: 0.3;
+    transition: opacity 0.3s ease;
+  }
+
+  .focus-mode .ProseMirror > .has-focus {
+    opacity: 1;
+  }
+
+  /* Selection styling */
+  .ProseMirror ::selection {
+    background: hsl(24 70% 45% / 0.2);
+  }
+
+  .ProseMirror:focus {
+    outline: none;
+  }
+
+  /* Smooth scrollbar */
+  .editorial-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .editorial-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .editorial-scroll::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 3px;
+  }
+
+  .editorial-scroll::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
   }
 }
