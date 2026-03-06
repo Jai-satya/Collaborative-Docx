@@ -7,14 +7,133 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.12 (cd3cf9e)"
+    PostgrestVersion: "14.4"
   }
   public: {
     Tables: {
-      [_ in never]: never
+      comments: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          document_id: string
+          id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          document_id: string
+          id?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          document_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_shares: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          document_id: string
+          id: string
+          is_password_protected: boolean | null
+          password_hash: string | null
+          permission_level: string
+          share_token: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          document_id: string
+          id?: string
+          is_password_protected?: boolean | null
+          password_hash?: string | null
+          permission_level?: string
+          share_token: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          document_id?: string
+          id?: string
+          is_password_protected?: boolean | null
+          password_hash?: string | null
+          permission_level?: string
+          share_token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_shares_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          content: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_template: boolean | null
+          parent_id: string | null
+          status: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_template?: boolean | null
+          parent_id?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_template?: boolean | null
+          parent_id?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
