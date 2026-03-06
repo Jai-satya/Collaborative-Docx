@@ -1,4 +1,4 @@
-import React, { useCallback, memo } from 'react';
+import React, { memo } from 'react';
 import { Editor } from '@tiptap/react';
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -8,7 +8,6 @@ import {
   List, ListOrdered, Quote, Code, Undo, Redo,
   Heading1, Heading2, Heading3, AlignLeft, AlignCenter, AlignRight,
   Highlighter, CheckSquare, Superscript, Subscript, Focus, Minus,
-  Type
 } from "lucide-react";
 
 interface EditorToolbarProps {
@@ -42,7 +41,7 @@ const ToolbarButton = memo(({ icon, title, action, isActive, disabled, shortcut 
           {icon}
         </Button>
       </TooltipTrigger>
-      <TooltipContent className="font-ui text-xs">
+      <TooltipContent side="bottom" className="font-ui text-xs z-[100]">
         {title}{shortcut && <span className="ml-1.5 text-muted-foreground">{shortcut}</span>}
       </TooltipContent>
     </Tooltip>

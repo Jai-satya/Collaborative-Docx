@@ -13,6 +13,7 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import Superscript from '@tiptap/extension-superscript';
 import Subscript from '@tiptap/extension-subscript';
+import FocusExtension from '@tiptap/extension-focus';
 import { debounce } from 'lodash';
 import { supabase } from "@/integrations/supabase/client";
 import EditorToolbar from './EditorToolbar';
@@ -60,6 +61,10 @@ const DocumentEditor = ({ content, onUpdate, documentId }: DocumentEditorProps) 
       Color,
       Superscript,
       Subscript,
+      FocusExtension.configure({
+        className: 'has-focus',
+        mode: 'all',
+      }),
     ],
     content: localContent,
     editorProps: {

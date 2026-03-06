@@ -63,7 +63,7 @@ const Auth = () => {
       >
         <Card className="w-[420px] shadow-float border-border/60">
           <CardHeader className="text-center pb-2">
-            <h2 className="font-display text-2xl font-bold tracking-tight text-foreground mb-1">Inkwell</h2>
+            <h2 className="font-display text-2xl font-bold tracking-tight text-foreground mb-1">Collaborative-Docx</h2>
             <CardDescription className="font-body text-muted-foreground">
               Sign in to start writing
             </CardDescription>

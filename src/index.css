@@ -223,10 +223,32 @@
     flex: 1;
   }
 
-  .editorial-prose ul:not([data-type="taskList"]),
-  .editorial-prose ol {
+  .editorial-prose ul:not([data-type="taskList"]) {
+    list-style-type: disc;
     padding-left: 1.5rem;
     margin-bottom: 1.25rem;
+  }
+
+  .editorial-prose ul:not([data-type="taskList"]) ul {
+    list-style-type: circle;
+  }
+
+  .editorial-prose ul:not([data-type="taskList"]) ul ul {
+    list-style-type: square;
+  }
+
+  .editorial-prose ol {
+    list-style-type: decimal;
+    padding-left: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .editorial-prose ol ol {
+    list-style-type: lower-alpha;
+  }
+
+  .editorial-prose ol ol ol {
+    list-style-type: lower-roman;
   }
 
   .editorial-prose ul:not([data-type="taskList"]) li,
