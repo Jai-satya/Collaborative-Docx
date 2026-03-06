@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -6,40 +5,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import DocumentEditor from "@/components/DocumentEditor";
 import Comments from "@/components/Comments";
+import DocumentShareDialog from "@/components/DocumentShareDialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
-  Popover, 
-  PopoverContent, 
-  PopoverTrigger 
-} from "@/components/ui/popover";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Share, Copy, Check, Lock } from "lucide-react";
-import { hashPassword } from "@/utils/password-utils";
+import { ArrowLeft, Save, Check } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface Presence {
-  user: {
-    id: string;
-    name: string;
-    avatar?: string;
-  };
+  user: { id: string; name: string; avatar?: string };
   lastActive: string;
   cursor?: { x: number; y: number };
-}
-
-interface DocumentShare {
-  id: string;
-  document_id: string;
-  share_token: string;
-  permission_level: string;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-  is_password_protected: boolean;
-  password_hash: string | null;
 }
 
 const Document = () => {
@@ -50,11 +25,7 @@ const Document = () => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [activeUsers, setActiveUsers] = useState<Presence[]>([]);
-  const [shareLink, setShareLink] = useState("");
-  const [sharePermission, setSharePermission] = useState("view");
-  const [isPasswordProtected, setIsPasswordProtected] = useState(false);
-  const [sharePassword, setSharePassword] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const { data: document, isLoading } = useQuery({
     queryKey: ['document', id],
@@ -64,7 +35,6 @@ const Document = () => {
         .select('*')
         .eq('id', id)
         .single();
-      
       if (error) throw error;
       return data;
     },
@@ -73,50 +43,31 @@ const Document = () => {
 
   useEffect(() => {
     if (document) {
-      setTitle(document.title);
-      setContent(document.content || '');
+      setTitle((document as any).title);
+      setContent((document as any).content || '');
     }
   }, [document]);
 
-  // Set up real-time document subscription
+  // Real-time document subscription
   useEffect(() => {
     const channel = supabase
       .channel(`document:${id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'documents',
-          filter: `id=eq.${id}`,
-        },
-        (payload) => {
-          queryClient.invalidateQueries({ queryKey: ['document', id] });
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'documents', filter: `id=eq.${id}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['document', id] });
+      })
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [id, queryClient]);
 
-  // Set up presence channel for collaborative features
+  // Presence channel
   useEffect(() => {
     let presenceChannel: ReturnType<typeof supabase.channel>;
-
     const setupPresence = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
       presenceChannel = supabase.channel(`presence:${id}`, {
-        config: {
-          presence: {
-            key: user.id,
-          },
-        },
+        config: { presence: { key: user.id } },
       });
-
       presenceChannel
         .on('presence', { event: 'sync' }, () => {
           const state = presenceChannel.presenceState();
@@ -139,14 +90,8 @@ const Document = () => {
           }
         });
     };
-
     setupPresence();
-
-    return () => {
-      if (presenceChannel) {
-        supabase.removeChannel(presenceChannel);
-      }
-    };
+    return () => { if (presenceChannel!) supabase.removeChannel(presenceChannel); };
   }, [id]);
 
   const updateDocument = useMutation({
@@ -155,252 +100,104 @@ const Document = () => {
         .from('documents')
         .update({ title, content, updated_at: new Date().toISOString() })
         .eq('id', id);
-      
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['document', id] });
-      toast({
-        title: "Success",
-        description: "Document saved successfully",
-      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
     },
-    onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to save document",
-      });
+    onError: () => {
+      toast({ variant: "destructive", title: "Error", description: "Failed to save document" });
     },
   });
 
-  const createShareLink = useMutation({
-    mutationFn: async ({ permission, isPasswordProtected, password }: { 
-      permission: string; 
-      isPasswordProtected: boolean;
-      password?: string;
-    }) => {
-      // First, check if there's an existing share
-      const { data: existingShare, error: fetchError } = await supabase
-        .from('document_shares')
-        .select('*')
-        .eq('document_id', id)
-        .single();
-      
-      // Generate a unique share token if needed
-      const shareToken = existingShare?.share_token || crypto.randomUUID();
-      
-      // Hash the password if password protection is enabled
-      let passwordHash = null;
-      if (isPasswordProtected && password) {
-        passwordHash = await hashPassword(password);
-      }
-      
-      if (existingShare) {
-        // Update existing share
-        const { error } = await supabase
-          .from('document_shares')
-          .update({ 
-            permission_level: permission,
-            is_password_protected: isPasswordProtected,
-            password_hash: passwordHash,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingShare.id);
-        
-        if (error) throw error;
-        
-        return {
-          token: existingShare.share_token,
-          url: `${window.location.origin}/shared/${existingShare.share_token}`
-        };
-      } else {
-        // Create new share
-        const userId = (await supabase.auth.getUser()).data.user?.id;
-        
-        const { data, error } = await supabase
-          .from('document_shares')
-          .insert({
-            document_id: id,
-            share_token: shareToken,
-            permission_level: permission,
-            is_password_protected: isPasswordProtected,
-            password_hash: passwordHash,
-            created_by: userId
-          })
-          .select('*')
-          .single();
-        
-        if (error) throw error;
-        
-        return {
-          token: data.share_token,
-          url: `${window.location.origin}/shared/${data.share_token}`
-        };
-      }
-    },
-    onSuccess: (result) => {
-      setShareLink(result.url);
-      toast({
-        title: "Share link created",
-        description: "The document can now be shared with others",
-      });
-    },
-    onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to create share link",
-      });
-    },
-  });
-
-  const handleGenerateShareLink = () => {
-    createShareLink.mutate({ 
-      permission: sharePermission, 
-      isPasswordProtected, 
-      password: isPasswordProtected ? sharePassword : undefined 
-    });
-  };
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(shareLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast({
-      title: "Link copied",
-      description: "Share link copied to clipboard",
-    });
-  };
-
-  const handleSave = () => {
-    updateDocument.mutate({ title, content });
-  };
+  const handleSave = () => updateDocument.mutate({ title, content });
 
   if (isLoading) {
-    return <div>Loading document...</div>;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="font-ui text-sm text-muted-foreground">Loading document...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="mb-8 flex items-center justify-between">
-        <div className="flex-1 mr-4">
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Document Title"
-            className="text-2xl font-bold"
-          />
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex -space-x-2">
-            {activeUsers.map((presence) => (
-              <div key={presence.user.id} className="relative">
-                <Avatar className="border-2 border-white">
-                  <AvatarImage src={presence.user.avatar} />
-                  <AvatarFallback>{presence.user.name[0].toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
-              </div>
-            ))}
+    <div className="min-h-screen bg-background">
+      {/* Top bar */}
+      <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container mx-auto px-4 md:px-6 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Untitled Document"
+              className="font-display text-lg font-semibold bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground/50 w-full min-w-0 tracking-tight"
+            />
           </div>
-          
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Share className="h-4 w-4" />
-                Share
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80">
-              <div className="space-y-4">
-                <h4 className="font-medium">Share this document</h4>
-                
-                <div className="space-y-2">
-                  <h5 className="text-sm font-medium">Permission</h5>
-                  <RadioGroup 
-                    value={sharePermission} 
-                    onValueChange={setSharePermission}
-                    className="flex flex-col space-y-1"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="view" id="r1" />
-                      <Label htmlFor="r1">View only</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="edit" id="r2" />
-                      <Label htmlFor="r2">Can edit</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
 
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="password-protection" 
-                    checked={isPasswordProtected}
-                    onCheckedChange={(checked) => setIsPasswordProtected(checked === true)}
-                  />
-                  <Label htmlFor="password-protection" className="flex items-center">
-                    <Lock className="h-4 w-4 mr-2" />
-                    Password protect
-                  </Label>
-                </div>
-                
-                {isPasswordProtected && (
-                  <div className="space-y-2">
-                    <Label htmlFor="share-password">Password</Label>
-                    <Input
-                      id="share-password"
-                      type="password"
-                      value={sharePassword}
-                      onChange={(e) => setSharePassword(e.target.value)}
-                      placeholder="Enter password"
-                    />
+          <div className="flex items-center gap-3 shrink-0">
+            {/* Active users */}
+            {activeUsers.length > 0 && (
+              <div className="flex -space-x-1.5 mr-1">
+                {activeUsers.slice(0, 4).map((presence) => (
+                  <Avatar key={presence.user.id} className="h-7 w-7 border-2 border-background">
+                    <AvatarImage src={presence.user.avatar} />
+                    <AvatarFallback className="text-[10px] font-ui bg-primary text-primary-foreground">
+                      {presence.user.name[0]?.toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                ))}
+                {activeUsers.length > 4 && (
+                  <div className="h-7 w-7 rounded-full bg-muted border-2 border-background flex items-center justify-center text-[10px] font-ui text-muted-foreground">
+                    +{activeUsers.length - 4}
                   </div>
-                )}
-                
-                {shareLink ? (
-                  <div className="flex items-center gap-2">
-                    <Input value={shareLink} readOnly className="flex-1" />
-                    <Button 
-                      size="icon" 
-                      variant="outline" 
-                      onClick={handleCopyLink}
-                      className="flex-shrink-0"
-                    >
-                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                ) : (
-                  <Button 
-                    onClick={handleGenerateShareLink}
-                    disabled={createShareLink.isPending || (isPasswordProtected && !sharePassword)}
-                  >
-                    {createShareLink.isPending ? "Generating..." : "Generate link"}
-                  </Button>
                 )}
               </div>
-            </PopoverContent>
-          </Popover>
-          
-          <Button onClick={() => navigate("/dashboard")}>Back</Button>
-          <Button onClick={handleSave} disabled={updateDocument.isPending}>
-            {updateDocument.isPending ? "Saving..." : "Save"}
-          </Button>
+            )}
+
+            <DocumentShareDialog documentId={id!} />
+
+            <Button
+              onClick={handleSave}
+              disabled={updateDocument.isPending}
+              size="sm"
+              className="font-ui text-sm rounded-full gap-1.5 shadow-soft"
+            >
+              {saved ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
+              {updateDocument.isPending ? "Saving..." : saved ? "Saved" : "Save"}
+            </Button>
+          </div>
         </div>
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <DocumentEditor 
-            content={content} 
-            onUpdate={setContent}
-            documentId={id!}
-          />
+      </header>
+
+      {/* Content */}
+      <motion.main
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="container mx-auto px-4 md:px-6 py-8"
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 max-w-6xl mx-auto">
+          <div>
+            <DocumentEditor content={content} onUpdate={setContent} documentId={id!} />
+          </div>
+          <aside className="hidden lg:block">
+            <div className="sticky top-20">
+              <Comments documentId={id!} />
+            </div>
+          </aside>
         </div>
-        <div>
-          <Comments documentId={id!} />
-        </div>
-      </div>
+      </motion.main>
     </div>
   );
 };
