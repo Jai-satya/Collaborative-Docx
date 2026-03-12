@@ -37,7 +37,18 @@ const Document = () => {
   const [activeUsers, setActiveUsers] = useState<Presence[]>([]);
   const [saved, setSaved] = useState(false);
 
-  const { data: document, isLoading } = useQuery({
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) navigate("/auth");
+    });
+  }, [navigate]);
+
+  const {
+    data: document,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["document", id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -49,6 +60,7 @@ const Document = () => {
       return data;
     },
     enabled: !!id,
+    retry: 1,
   });
 
   useEffect(() => {
@@ -178,6 +190,28 @@ const Document = () => {
           <p className="font-ui text-sm text-muted-foreground">
             Loading document...
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError || (!isLoading && !document)) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <h1 className="font-display text-4xl font-bold mb-3">
+            Document not found
+          </h1>
+          <p className="font-body text-muted-foreground mb-6">
+            This document may have been deleted, or you don't have permission to
+            view it.
+          </p>
+          <Button
+            onClick={() => navigate("/dashboard")}
+            className="rounded-full"
+          >
+            Back to Dashboard
+          </Button>
         </div>
       </div>
     );
