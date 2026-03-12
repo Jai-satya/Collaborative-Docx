@@ -8,6 +8,7 @@ import {
   Code2,
   FileCode,
   FileJson,
+  FileDown,
   Copy,
   Check,
 } from "lucide-react";
@@ -31,12 +32,18 @@ function htmlToMarkdown(html: string): string {
   md = md.replace(/<u[^>]*>(.*?)<\/u>/gi, "$1");
   md = md.replace(/<s[^>]*>(.*?)<\/s>/gi, "~~$1~~");
   // Code blocks
-  md = md.replace(/<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/gis, "```\n$1\n```\n\n");
+  md = md.replace(
+    /<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/gis,
+    "```\n$1\n```\n\n",
+  );
   md = md.replace(/<code[^>]*>(.*?)<\/code>/gi, "`$1`");
   // Links
   md = md.replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, "[$2]($1)");
   // Images
-  md = md.replace(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*\/?>/gi, "![$2]($1)");
+  md = md.replace(
+    /<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*\/?>/gi,
+    "![$2]($1)",
+  );
   // Lists
   md = md.replace(/<ul[^>]*>/gi, "\n");
   md = md.replace(/<\/ul>/gi, "\n");
@@ -53,7 +60,12 @@ function htmlToMarkdown(html: string): string {
   // Strip remaining HTML
   md = md.replace(/<[^>]+>/g, "");
   // Decode entities
-  md = md.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&nbsp;/g, " ");
+  md = md
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&nbsp;/g, " ");
   // Clean excess newlines
   md = md.replace(/\n{3,}/g, "\n\n").trim();
   return md;
@@ -75,7 +87,8 @@ const ExportDocument = memo(
   ({ editor, documentTitle = "document", onClose }: ExportDocumentProps) => {
     const [copiedFormat, setCopiedFormat] = useState<string | null>(null);
 
-    const safeName = documentTitle.replace(/[^a-zA-Z0-9-_ ]/g, "").trim() || "document";
+    const safeName =
+      documentTitle.replace(/[^a-zA-Z0-9-_ ]/g, "").trim() || "document";
 
     const getContent = useCallback(
       (format: "html" | "markdown" | "text" | "json") => {
@@ -118,16 +131,66 @@ const ExportDocument = memo(
           text: "text/plain",
           json: "application/json",
         };
-        downloadFile(content, `${safeName}${extensions[format]}`, mimeTypes[format]);
+        downloadFile(
+          content,
+          `${safeName}${extensions[format]}`,
+          mimeTypes[format],
+        );
       },
       [getContent, safeName],
     );
 
+    const handleDownloadPdf = useCallback(() => {
+      const html = editor.getHTML();
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) return;
+      printWindow.document.write(`<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>${safeName}</title>
+<style>
+  body { font-family: Georgia, 'Times New Roman', serif; max-width: 700px; margin: 40px auto; padding: 0 20px; color: #1a1a1a; line-height: 1.7; font-size: 14px; }
+  h1, h2, h3, h4, h5, h6 { font-family: Georgia, serif; margin-top: 1.5em; margin-bottom: 0.5em; }
+  h1 { font-size: 28px; } h2 { font-size: 22px; } h3 { font-size: 18px; }
+  blockquote { border-left: 3px solid #ccc; margin: 1em 0; padding-left: 1em; color: #555; }
+  code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+  pre { background: #f4f4f4; padding: 16px; border-radius: 6px; overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+  th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+  th { background: #f8f8f8; font-weight: 600; }
+  ul, ol { padding-left: 1.5em; }
+  hr { border: none; border-top: 1px solid #ddd; margin: 2em 0; }
+  @media print { body { margin: 0; } }
+</style>
+</head><body>${html}</body></html>`);
+      printWindow.document.close();
+      printWindow.addEventListener("afterprint", () => printWindow.close());
+      setTimeout(() => printWindow.print(), 300);
+    }, [editor, safeName]);
+
     const formats = [
-      { id: "html" as const, label: "HTML", icon: <Code2 className="h-4 w-4" />, desc: "Web-ready format" },
-      { id: "markdown" as const, label: "Markdown", icon: <FileCode className="h-4 w-4" />, desc: "GitHub, blogs, docs" },
-      { id: "text" as const, label: "Plain Text", icon: <FileText className="h-4 w-4" />, desc: "Universal text format" },
-      { id: "json" as const, label: "JSON", icon: <FileJson className="h-4 w-4" />, desc: "Structured data format" },
+      {
+        id: "html" as const,
+        label: "HTML",
+        icon: <Code2 className="h-4 w-4" />,
+        desc: "Web-ready format",
+      },
+      {
+        id: "markdown" as const,
+        label: "Markdown",
+        icon: <FileCode className="h-4 w-4" />,
+        desc: "GitHub, blogs, docs",
+      },
+      {
+        id: "text" as const,
+        label: "Plain Text",
+        icon: <FileText className="h-4 w-4" />,
+        desc: "Universal text format",
+      },
+      {
+        id: "json" as const,
+        label: "JSON",
+        icon: <FileJson className="h-4 w-4" />,
+        desc: "Structured data format",
+      },
     ];
 
     return (
@@ -137,18 +200,54 @@ const ExportDocument = memo(
             <Download className="h-4 w-4 text-primary" />
             <h3 className="font-ui text-sm font-semibold">Export</h3>
           </div>
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onClose}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0"
+            onClick={onClose}
+          >
             <X className="h-3 w-3" />
           </Button>
         </div>
 
         <div className="space-y-2">
+          {/* PDF export */}
+          <div className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors group">
+            <div className="text-muted-foreground">
+              <FileDown className="h-4 w-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-ui font-medium text-foreground">
+                PDF
+              </div>
+              <div className="text-[10px] font-ui text-muted-foreground">
+                Print-ready document
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 gap-1 text-xs"
+              onClick={handleDownloadPdf}
+            >
+              <Download className="h-3 w-3" />
+              PDF
+            </Button>
+          </div>
+
           {formats.map(({ id, label, icon, desc }) => (
-            <div key={id} className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors group">
+            <div
+              key={id}
+              className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors group"
+            >
               <div className="text-muted-foreground">{icon}</div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-ui font-medium text-foreground">{label}</div>
-                <div className="text-[10px] font-ui text-muted-foreground">{desc}</div>
+                <div className="text-xs font-ui font-medium text-foreground">
+                  {label}
+                </div>
+                <div className="text-[10px] font-ui text-muted-foreground">
+                  {desc}
+                </div>
               </div>
               <Button
                 variant="ghost"
