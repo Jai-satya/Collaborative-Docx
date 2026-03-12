@@ -321,14 +321,14 @@ const SharedDocument = () => {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && shareData?.permission_level === "edit") {
     return (
       <div className="container mx-auto py-8 px-4">
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Authentication Required</AlertTitle>
           <AlertDescription>
-            Please log in to access this shared document.
+            Please log in to edit this shared document.
           </AlertDescription>
         </Alert>
         <div className="mt-4">
@@ -430,9 +430,13 @@ const SharedDocument = () => {
               </div>
             ))}
           </div>
-          <Button onClick={() => navigate("/dashboard")}>
-            Back to Dashboard
-          </Button>
+          {isAuthenticated ? (
+            <Button onClick={() => navigate("/dashboard")}>
+              Back to Dashboard
+            </Button>
+          ) : (
+            <Button onClick={() => navigate("/")}>Home</Button>
+          )}
           {permissionLevel === "edit" && (
             <Button onClick={handleSave} disabled={updateDocument.isPending}>
               {updateDocument.isPending ? "Saving..." : "Save"}
