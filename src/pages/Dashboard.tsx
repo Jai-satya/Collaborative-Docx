@@ -8,6 +8,7 @@ import DocumentList from "@/components/DocumentList";
 import { Plus, LogOut, FileText } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Tables } from "@/integrations/supabase/types";
+import SEO from "@/components/SEO";
 
 type DocumentRow = Tables<"documents">;
 
@@ -67,6 +68,12 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Dashboard"
+        description="Manage your documents, create new ones, and collaborate with your team in real-time."
+        canonical="/dashboard"
+        noindex
+      />
       {/* Header */}
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">

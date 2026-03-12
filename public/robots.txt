@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /documents/
+Disallow: /shared/
+Disallow: /auth
+
+Sitemap: /sitemap.xml

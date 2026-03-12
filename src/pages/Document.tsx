@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowLeft, Save, Check } from "lucide-react";
 import { snapshotVersion } from "@/utils/version-utils";
+import SEO from "@/components/SEO";
 import { motion } from "framer-motion";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -184,6 +185,11 @@ const Document = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title={title || "Untitled Document"}
+        description={`Editing "${title || "Untitled Document"}" — collaborative document editor.`}
+        noindex
+      />
       {/* Top bar */}
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 md:px-6 py-3 flex items-center justify-between gap-4">

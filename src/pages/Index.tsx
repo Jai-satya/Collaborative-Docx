@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { FileText, Users, Zap, Shield, ArrowRight } from "lucide-react";
+import SEO from "@/components/SEO";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -45,8 +46,35 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Write Beautifully, Together"
+        description="A premium collaborative document editor with real-time editing, rich typography, and elegant design. Write beautifully, together."
+        canonical="/"
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "WebApplication",
+          name: "Collaborative Docx",
+          description:
+            "A premium collaborative document editor with real-time editing, rich typography, and elegant design.",
+          applicationCategory: "Productivity",
+          operatingSystem: "Web",
+          offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+          featureList: [
+            "Real-time collaboration",
+            "Rich text editing",
+            "Version history",
+            "Document sharing",
+            "Export to multiple formats",
+          ],
+        }}
+      />
+
       {/* Nav */}
-      <nav className="border-b border-border/50 backdrop-blur-sm bg-background/80 sticky top-0 z-50">
+      <nav
+        className="border-b border-border/50 backdrop-blur-sm bg-background/80 sticky top-0 z-50"
+        role="navigation"
+        aria-label="Main navigation"
+      >
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <h2 className="font-display text-xl font-bold tracking-tight text-foreground">
             Collaborative Docx
@@ -62,7 +90,7 @@ const Index = () => {
       </nav>
 
       {/* Hero */}
-      <section className="container mx-auto px-6 pt-24 pb-20">
+      <section className="container mx-auto px-6 pt-24 pb-20" aria-label="Hero">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -91,7 +119,7 @@ const Index = () => {
       </section>
 
       {/* Features */}
-      <section className="container mx-auto px-6 pb-24">
+      <section className="container mx-auto px-6 pb-24" aria-label="Features">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
           {features.map((f, i) => (
             <motion.div
@@ -120,7 +148,7 @@ const Index = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border/50 py-8">
+      <footer className="border-t border-border/50 py-8" role="contentinfo">
         <p className="text-center text-sm text-muted-foreground font-ui">
           Crafted with care. Built for writers.
         </p>

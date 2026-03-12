@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
+import SEO from "@/components/SEO";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -69,6 +70,11 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background relative">
+      <SEO
+        title="Sign In"
+        description="Sign in or create an account to start collaborating on documents in real-time."
+        canonical="/auth"
+      />
       <button
         onClick={() => navigate("/")}
         className="absolute top-6 left-6 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors font-ui"
