@@ -269,11 +269,11 @@ const DocumentEditor = ({
 
   return (
     <div
-      className={`flex gap-4 ${isZenMode ? "fixed inset-0 z-50 bg-background p-8" : ""}`}
+      className={`flex flex-col lg:flex-row gap-4 ${isZenMode ? "fixed inset-0 z-50 bg-background p-4 sm:p-8" : ""}`}
     >
       {/* Side panels (left) */}
       {(showOutline || showWritingGoals) && (
-        <div className="hidden lg:flex flex-col gap-4 w-64 shrink-0">
+        <div className="flex flex-col gap-4 w-full lg:w-64 lg:shrink-0">
           {showOutline && (
             <DocumentOutline
               editor={editor}
@@ -291,7 +291,7 @@ const DocumentEditor = ({
 
       {/* Main editor */}
       <div
-        className={`flex-1 border border-border/50 rounded-xl overflow-hidden bg-card shadow-soft transition-all duration-300 ${isFocusMode ? "focus-mode shadow-dramatic" : ""} ${isTypewriterMode ? "typewriter-mode" : ""}`}
+        className={`flex-1 min-w-0 border border-border/50 rounded-xl overflow-hidden bg-card shadow-soft transition-all duration-300 ${isFocusMode ? "focus-mode shadow-dramatic" : ""} ${isTypewriterMode ? "typewriter-mode" : ""}`}
       >
         <EditorToolbar
           editor={editor}
@@ -311,7 +311,7 @@ const DocumentEditor = ({
 
         {/* Find & Replace bar */}
         {showFindReplace && (
-          <div className="px-4 pt-2">
+          <div className="px-2 sm:px-4 pt-2">
             <FindReplace
               editor={editor}
               onClose={() => setShowFindReplace(false)}
@@ -322,7 +322,7 @@ const DocumentEditor = ({
         <div className="relative editorial-scroll" ref={editorRef}>
           <EditorContent
             editor={editor}
-            className="px-8 md:px-16 py-8 min-h-[500px] max-h-[calc(100vh-300px)] overflow-y-auto"
+            className="px-4 sm:px-8 md:px-16 py-4 sm:py-8 min-h-[300px] sm:min-h-[500px] max-h-[calc(100vh-300px)] overflow-y-auto"
           />
           <RemoteCursors cursors={cursors} />
         </div>
@@ -341,7 +341,7 @@ const DocumentEditor = ({
         showShortcuts ||
         showWordFrequency ||
         showVersionHistory) && (
-        <div className="hidden lg:flex flex-col gap-4 w-64 shrink-0">
+        <div className="flex flex-col gap-4 w-full lg:w-64 lg:shrink-0">
           {showExport && (
             <ExportDocument
               editor={editor}

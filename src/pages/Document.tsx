@@ -8,7 +8,7 @@ import Comments from "@/components/Comments";
 import DocumentShareDialog from "@/components/DocumentShareDialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Save, Check } from "lucide-react";
+import { ArrowLeft, Save, Check, MessageCircle } from "lucide-react";
 import { snapshotVersion } from "@/utils/version-utils";
 import SEO from "@/components/SEO";
 import { motion } from "framer-motion";
@@ -37,6 +37,7 @@ const Document = () => {
   const [activeUsers, setActiveUsers] = useState<Presence[]>([]);
   const [saved, setSaved] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
+  const [showMobileComments, setShowMobileComments] = useState(false);
 
   // Wait for auth session to restore before doing anything
   useEffect(() => {
@@ -231,8 +232,8 @@ const Document = () => {
       />
       {/* Top bar */}
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 md:px-6 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
+        <div className="container mx-auto px-3 sm:px-4 md:px-6 py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               onClick={() => navigate("/dashboard")}
               className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
@@ -243,14 +244,14 @@ const Document = () => {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Untitled Document"
-              className="font-display text-lg font-semibold bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground/50 w-full min-w-0 tracking-tight"
+              className="font-display text-base sm:text-lg font-semibold bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground/50 w-full min-w-0 tracking-tight"
             />
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             {/* Active users */}
             {activeUsers.length > 0 && (
-              <div className="flex -space-x-1.5 mr-1">
+              <div className="hidden sm:flex -space-x-1.5 mr-1">
                 {activeUsers.slice(0, 4).map((presence) => (
                   <Avatar
                     key={presence.user.id}
@@ -270,6 +271,16 @@ const Document = () => {
               </div>
             )}
 
+            {/* Mobile comments toggle */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="lg:hidden h-8 w-8 p-0"
+              onClick={() => setShowMobileComments((prev) => !prev)}
+            >
+              <MessageCircle className="h-4 w-4" />
+            </Button>
+
             <DocumentShareDialog documentId={id!} />
 
             <Button
@@ -283,11 +294,13 @@ const Document = () => {
               ) : (
                 <Save className="h-3.5 w-3.5" />
               )}
-              {updateDocument.isPending
-                ? "Saving..."
-                : saved
-                  ? "Saved"
-                  : "Save"}
+              <span className="hidden sm:inline">
+                {updateDocument.isPending
+                  ? "Saving..."
+                  : saved
+                    ? "Saved"
+                    : "Save"}
+              </span>
             </Button>
           </div>
         </div>
@@ -298,16 +311,22 @@ const Document = () => {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="container mx-auto px-4 md:px-6 py-8"
+        className="container mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-8"
       >
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 max-w-6xl mx-auto">
-          <div>
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 sm:gap-8 max-w-6xl mx-auto">
+          <div className="min-w-0">
             <DocumentEditor
               content={content}
               onUpdate={setContent}
               documentId={id!}
             />
           </div>
+          {/* Mobile comments panel */}
+          {showMobileComments && (
+            <div className="lg:hidden">
+              <Comments documentId={id!} />
+            </div>
+          )}
           <aside className="hidden lg:block">
             <div className="sticky top-20">
               <Comments documentId={id!} />

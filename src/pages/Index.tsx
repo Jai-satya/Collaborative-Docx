@@ -75,7 +75,7 @@ const Index = () => {
         role="navigation"
         aria-label="Main navigation"
       >
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           <h2 className="font-display text-xl font-bold tracking-tight text-foreground">
             Collaborative Docx
           </h2>
@@ -90,18 +90,21 @@ const Index = () => {
       </nav>
 
       {/* Hero */}
-      <section className="container mx-auto px-6 pt-24 pb-20" aria-label="Hero">
+      <section
+        className="container mx-auto px-4 sm:px-6 pt-12 sm:pt-24 pb-12 sm:pb-20"
+        aria-label="Hero"
+      >
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
           className="max-w-3xl mx-auto text-center"
         >
-          <h1 className="font-display text-5xl md:text-7xl font-bold tracking-tight text-foreground leading-[1.08] mb-6">
+          <h1 className="font-display text-3xl sm:text-5xl md:text-7xl font-bold tracking-tight text-foreground leading-[1.08] mb-4 sm:mb-6">
             Write beautifully,{" "}
             <span className="text-primary italic">together.</span>
           </h1>
-          <p className="font-body text-lg md:text-xl text-muted-foreground max-w-xl mx-auto leading-relaxed mb-10">
+          <p className="font-body text-base sm:text-lg md:text-xl text-muted-foreground max-w-xl mx-auto leading-relaxed mb-6 sm:mb-10">
             A collaborative writing experience designed for clarity, elegance,
             and flow. Where every word feels intentional.
           </p>
@@ -119,8 +122,11 @@ const Index = () => {
       </section>
 
       {/* Features */}
-      <section className="container mx-auto px-6 pb-24" aria-label="Features">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+      <section
+        className="container mx-auto px-4 sm:px-6 pb-16 sm:pb-24"
+        aria-label="Features"
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 max-w-4xl mx-auto">
           {features.map((f, i) => (
             <motion.div
               key={f.title}

@@ -77,7 +77,7 @@ const Auth = () => {
       />
       <button
         onClick={() => navigate("/")}
-        className="absolute top-6 left-6 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors font-ui"
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors font-ui"
       >
         <ArrowLeft className="h-4 w-4" />
         Back
@@ -88,7 +88,7 @@ const Auth = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       >
-        <Card className="w-[420px] shadow-float border-border/60">
+        <Card className="w-full max-w-[420px] mx-4 shadow-float border-border/60">
           <CardHeader className="text-center pb-2">
             <h2 className="font-display text-2xl font-bold tracking-tight text-foreground mb-1">
               Collaborative Docx

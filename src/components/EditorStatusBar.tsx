@@ -34,34 +34,38 @@ const EditorStatusBar = memo(
     const readingTime = Math.max(1, Math.ceil(words / 238));
 
     return (
-      <div className="border-t border-border/50 bg-card/60 px-4 py-2 flex items-center justify-between text-xs font-ui text-muted-foreground">
-        <div className="flex items-center gap-4">
+      <div className="border-t border-border/50 bg-card/60 px-3 sm:px-4 py-1.5 sm:py-2 flex items-center justify-between text-xs font-ui text-muted-foreground gap-2">
+        <div className="flex items-center gap-2 sm:gap-4">
           <span>{words.toLocaleString()} words</span>
-          <span>{chars.toLocaleString()} characters</span>
-          <span className="flex items-center gap-1">
+          <span className="hidden sm:inline">
+            {chars.toLocaleString()} characters
+          </span>
+          <span className="hidden sm:flex items-center gap-1">
             <Clock className="h-3 w-3" />
             {readingTime} min read
           </span>
         </div>
-        <div className="flex items-center gap-4">
-          <PomodoroTimer />
+        <div className="flex items-center gap-2 sm:gap-4">
+          <span className="hidden md:inline-flex">
+            <PomodoroTimer />
+          </span>
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground"
+            className="hidden sm:inline-flex h-6 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground"
             onClick={onToggleShortcuts}
           >
             <Keyboard className="h-3 w-3" />
             Shortcuts
           </Button>
           {isTypewriterMode && (
-            <span className="flex items-center gap-1 text-primary">
+            <span className="hidden sm:flex items-center gap-1 text-primary">
               <AlignCenter className="h-3 w-3" />
               Typewriter
             </span>
           )}
           {isFocusMode && (
-            <span className="flex items-center gap-1 text-primary">
+            <span className="hidden sm:flex items-center gap-1 text-primary">
               <Eye className="h-3 w-3" />
               Focus
             </span>

@@ -174,9 +174,9 @@ const FindReplace = memo(({ editor, onClose }: FindReplaceProps) => {
   );
 
   return (
-    <div className="border border-border/50 rounded-lg bg-card shadow-elevated p-3 space-y-2 animate-fade-in">
+    <div className="border border-border/50 rounded-lg bg-card shadow-elevated p-2 sm:p-3 space-y-2 animate-fade-in">
       {/* Find row */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap sm:flex-nowrap">
         <Input
           ref={findInputRef}
           value={findText}
@@ -217,7 +217,7 @@ const FindReplace = memo(({ editor, onClose }: FindReplaceProps) => {
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        <span className="text-[10px] font-ui text-muted-foreground whitespace-nowrap min-w-[50px] text-center">
+        <span className="text-[10px] font-ui text-muted-foreground whitespace-nowrap min-w-[40px] sm:min-w-[50px] text-center">
           {matches.length > 0
             ? `${currentMatch + 1}/${matches.length}`
             : "No results"}
@@ -260,7 +260,7 @@ const FindReplace = memo(({ editor, onClose }: FindReplaceProps) => {
 
       {/* Replace row */}
       {showReplace && (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap sm:flex-nowrap">
           <Input
             value={replaceText}
             onChange={(e) => setReplaceText(e.target.value)}

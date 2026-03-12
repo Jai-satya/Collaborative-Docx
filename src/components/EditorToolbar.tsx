@@ -330,8 +330,8 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   ];
 
   return (
-    <div className="border-b border-border/50 bg-card/80 backdrop-blur-sm px-3 py-1.5 sticky top-0 z-10">
-      <div className="flex flex-wrap items-center gap-0.5">
+    <div className="border-b border-border/50 bg-card/80 backdrop-blur-sm px-2 sm:px-3 py-1.5 sticky top-0 z-10 overflow-x-auto">
+      <div className="flex items-center gap-0.5 min-w-max">
         {groups.map((group, gi) => (
           <React.Fragment key={gi}>
             {gi > 0 && (

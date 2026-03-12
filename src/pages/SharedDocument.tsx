@@ -394,7 +394,7 @@ const SharedDocument = () => {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="container mx-auto py-4 sm:py-8 px-3 sm:px-4">
       <div className="mb-2">
         {permissionLevel === "view" && (
           <Alert>
@@ -406,18 +406,18 @@ const SharedDocument = () => {
           </Alert>
         )}
       </div>
-      <div className="mb-8 flex items-center justify-between">
-        <div className="flex-1 mr-4">
+      <div className="mb-4 sm:mb-8 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+        <div className="flex-1 min-w-0">
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Document Title"
-            className="text-2xl font-bold"
+            className="text-xl sm:text-2xl font-bold"
             readOnly={permissionLevel === "view"}
           />
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex -space-x-2">
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0 flex-wrap">
+          <div className="hidden sm:flex -space-x-2">
             {activeUsers.map((presence) => (
               <div key={presence.user.id} className="relative">
                 <Avatar className="border-2 border-white">
@@ -431,21 +431,32 @@ const SharedDocument = () => {
             ))}
           </div>
           {isAuthenticated ? (
-            <Button onClick={() => navigate("/dashboard")}>
-              Back to Dashboard
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate("/dashboard")}
+            >
+              <span className="hidden sm:inline">Back to Dashboard</span>
+              <span className="sm:hidden">Dashboard</span>
             </Button>
           ) : (
-            <Button onClick={() => navigate("/")}>Home</Button>
+            <Button size="sm" variant="outline" onClick={() => navigate("/")}>
+              Home
+            </Button>
           )}
           {permissionLevel === "edit" && (
-            <Button onClick={handleSave} disabled={updateDocument.isPending}>
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={updateDocument.isPending}
+            >
               {updateDocument.isPending ? "Saving..." : "Save"}
             </Button>
           )}
         </div>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
+        <div className="lg:col-span-2 min-w-0">
           {documentId && (
             <DocumentEditor
               content={content}

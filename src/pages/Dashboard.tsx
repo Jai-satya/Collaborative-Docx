@@ -76,24 +76,24 @@ const Dashboard = () => {
       />
       {/* Header */}
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="font-display text-xl font-bold tracking-tight text-foreground">
+        <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <h1 className="font-display text-lg sm:text-xl font-bold tracking-tight text-foreground shrink-0">
               Collaborative Docx
             </h1>
-            <span className="text-border">|</span>
-            <span className="font-ui text-sm text-muted-foreground">
+            <span className="text-border hidden sm:inline">|</span>
+            <span className="font-ui text-sm text-muted-foreground hidden sm:inline truncate">
               Welcome, {userName}
             </span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <Button
               onClick={() => createDocument.mutate()}
               disabled={createDocument.isPending}
               className="font-ui text-sm rounded-full shadow-soft hover:shadow-elevated transition-all"
             >
-              <Plus className="h-4 w-4 mr-2" />
-              New Document
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">New Document</span>
             </Button>
             <Button
               variant="ghost"
@@ -108,7 +108,7 @@ const Dashboard = () => {
       </header>
 
       {/* Content */}
-      <main className="container mx-auto px-6 py-10">
+      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
