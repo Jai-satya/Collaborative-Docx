@@ -72,7 +72,7 @@ const Dashboard = () => {
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="font-display text-xl font-bold tracking-tight text-foreground">
-              Collaborative-Docx
+              Collaborative Docx
             </h1>
             <span className="text-border">|</span>
             <span className="font-ui text-sm text-muted-foreground">

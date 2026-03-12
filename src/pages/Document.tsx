@@ -9,6 +9,7 @@ import DocumentShareDialog from "@/components/DocumentShareDialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowLeft, Save, Check } from "lucide-react";
+import { snapshotVersion } from "@/utils/version-utils";
 import { motion } from "framer-motion";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -151,7 +152,22 @@ const Document = () => {
     },
   });
 
-  const handleSave = () => updateDocument.mutate({ title, content });
+  const handleSave = () => {
+    updateDocument.mutate({ title, content });
+    if (id) snapshotVersion(id, content);
+  };
+
+  // Ctrl+S to save manually
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault();
+        handleSave();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [title, content]);
 
   if (isLoading) {
     return (

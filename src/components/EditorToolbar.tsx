@@ -37,7 +37,6 @@ import {
   Subscript,
   Focus,
   Minus,
-  Command,
   Search,
   CaseSensitive,
   PanelLeft,
@@ -45,8 +44,8 @@ import {
   Maximize2,
   Type,
   Download,
-  Keyboard,
   BarChart3,
+  History,
 } from "lucide-react";
 import TableInsert from "./TableInsert";
 import LinkInsert from "./LinkInsert";
@@ -59,13 +58,12 @@ interface EditorToolbarProps {
   onToggleFocusMode: () => void;
   onToggleTypewriterMode: () => void;
   onToggleZenMode: () => void;
-  onOpenCommandPalette: () => void;
   onOpenFindReplace: () => void;
   onToggleOutline: () => void;
   onToggleWritingGoals: () => void;
   onToggleExport: () => void;
-  onToggleShortcuts: () => void;
   onToggleWordFrequency: () => void;
+  onToggleVersionHistory: () => void;
 }
 
 const ToolbarButton = memo(
@@ -122,13 +120,12 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
   onToggleFocusMode,
   onToggleTypewriterMode,
   onToggleZenMode,
-  onOpenCommandPalette,
   onOpenFindReplace,
   onToggleOutline,
   onToggleWritingGoals,
   onToggleExport,
-  onToggleShortcuts,
   onToggleWordFrequency,
+  onToggleVersionHistory,
 }) => {
   if (!editor) return null;
 
@@ -390,13 +387,6 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
         {/* Quick actions */}
         <ToolbarButton
-          icon={<Command className="h-3.5 w-3.5" />}
-          title="Command Palette"
-          action={onOpenCommandPalette}
-          isActive={false}
-          shortcut="⌘K"
-        />
-        <ToolbarButton
           icon={<Search className="h-3.5 w-3.5" />}
           title="Find & Replace"
           action={onOpenFindReplace}
@@ -430,9 +420,9 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
           isActive={false}
         />
         <ToolbarButton
-          icon={<Keyboard className="h-3.5 w-3.5" />}
-          title="Keyboard Shortcuts"
-          action={onToggleShortcuts}
+          icon={<History className="h-3.5 w-3.5" />}
+          title="Version History"
+          action={onToggleVersionHistory}
           isActive={false}
         />
       </div>

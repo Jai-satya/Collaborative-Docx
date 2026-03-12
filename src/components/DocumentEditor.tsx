@@ -25,13 +25,13 @@ import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
 import EditorStatusBar from "./EditorStatusBar";
-import CommandPalette from "./CommandPalette";
 import FindReplace from "./FindReplace";
 import WritingGoals from "./WritingGoals";
 import DocumentOutline from "./DocumentOutline";
 import ExportDocument from "./ExportDocument";
 import KeyboardShortcuts from "./KeyboardShortcuts";
 import WordFrequency from "./WordFrequency";
+import VersionHistory from "./VersionHistory";
 
 interface DocumentEditorProps {
   content: string;
@@ -50,13 +50,13 @@ const DocumentEditor = ({
   const [isZenMode, setIsZenMode] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showFindReplace, setShowFindReplace] = useState(false);
   const [showWritingGoals, setShowWritingGoals] = useState(false);
   const [showOutline, setShowOutline] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showWordFrequency, setShowWordFrequency] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const isRemoteUpdateRef = useRef(false);
@@ -93,7 +93,8 @@ const DocumentEditor = ({
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
-          class: "text-primary underline decoration-primary/40 hover:decoration-primary cursor-pointer",
+          class:
+            "text-primary underline decoration-primary/40 hover:decoration-primary cursor-pointer",
         },
       }),
       Table.configure({ resizable: true }),
@@ -237,11 +238,6 @@ const DocumentEditor = ({
         e.preventDefault();
         setIsFocusMode((prev) => !prev);
       }
-      // Cmd/Ctrl + K for command palette
-      if (mod && e.key === "k") {
-        e.preventDefault();
-        setShowCommandPalette((prev) => !prev);
-      }
       // Cmd/Ctrl + Shift + H for find & replace
       if (mod && e.shiftKey && e.key === "h") {
         e.preventDefault();
@@ -305,13 +301,12 @@ const DocumentEditor = ({
           onToggleFocusMode={() => setIsFocusMode((prev) => !prev)}
           onToggleTypewriterMode={() => setIsTypewriterMode((prev) => !prev)}
           onToggleZenMode={() => setIsZenMode((prev) => !prev)}
-          onOpenCommandPalette={() => setShowCommandPalette(true)}
           onOpenFindReplace={() => setShowFindReplace((prev) => !prev)}
           onToggleOutline={() => setShowOutline((prev) => !prev)}
           onToggleWritingGoals={() => setShowWritingGoals((prev) => !prev)}
           onToggleExport={() => setShowExport((prev) => !prev)}
-          onToggleShortcuts={() => setShowShortcuts((prev) => !prev)}
           onToggleWordFrequency={() => setShowWordFrequency((prev) => !prev)}
+          onToggleVersionHistory={() => setShowVersionHistory((prev) => !prev)}
         />
 
         {/* Find & Replace bar */}
@@ -337,11 +332,15 @@ const DocumentEditor = ({
           lastSaved={lastSaved}
           isFocusMode={isFocusMode}
           isTypewriterMode={isTypewriterMode}
+          onToggleShortcuts={() => setShowShortcuts((prev) => !prev)}
         />
       </div>
 
       {/* Side panel (right) */}
-      {(showExport || showShortcuts || showWordFrequency) && (
+      {(showExport ||
+        showShortcuts ||
+        showWordFrequency ||
+        showVersionHistory) && (
         <div className="hidden lg:flex flex-col gap-4 w-64 shrink-0">
           {showExport && (
             <ExportDocument
@@ -356,22 +355,22 @@ const DocumentEditor = ({
             />
           )}
           {showShortcuts && (
-            <KeyboardShortcuts
-              onClose={() => setShowShortcuts(false)}
+            <KeyboardShortcuts onClose={() => setShowShortcuts(false)} />
+          )}
+          {showVersionHistory && (
+            <VersionHistory
+              documentId={documentId}
+              currentContent={editor.getHTML()}
+              onRestore={(content) => {
+                editor.commands.setContent(content, true);
+                setLocalContent(content);
+                onUpdate(content);
+              }}
+              onClose={() => setShowVersionHistory(false)}
             />
           )}
         </div>
       )}
-
-      {/* Command Palette */}
-      <CommandPalette
-        editor={editor}
-        open={showCommandPalette}
-        onOpenChange={setShowCommandPalette}
-        onToggleFocusMode={() => setIsFocusMode((prev) => !prev)}
-        onToggleTypewriterMode={() => setIsTypewriterMode((prev) => !prev)}
-        onToggleZenMode={() => setIsZenMode((prev) => !prev)}
-      />
     </div>
   );
 };

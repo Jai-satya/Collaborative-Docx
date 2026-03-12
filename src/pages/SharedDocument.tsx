@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AlertCircle, Lock } from "lucide-react";
+import { snapshotVersion } from "@/utils/version-utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Card,
@@ -264,6 +265,7 @@ const SharedDocument = () => {
     }
 
     updateDocument.mutate({ title, content });
+    if (shareData?.document_id) snapshotVersion(shareData.document_id, content);
   };
 
   const handleVerifyPassword = async () => {

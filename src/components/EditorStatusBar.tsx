@@ -1,6 +1,14 @@
 import { memo } from "react";
 import { Editor } from "@tiptap/react";
-import { Cloud, CloudOff, Clock, Eye, AlignCenter } from "lucide-react";
+import {
+  Cloud,
+  CloudOff,
+  Clock,
+  Eye,
+  AlignCenter,
+  Keyboard,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import PomodoroTimer from "./PomodoroTimer";
 
 interface EditorStatusBarProps {
@@ -9,6 +17,7 @@ interface EditorStatusBarProps {
   lastSaved: Date | null;
   isFocusMode: boolean;
   isTypewriterMode: boolean;
+  onToggleShortcuts: () => void;
 }
 
 const EditorStatusBar = memo(
@@ -18,6 +27,7 @@ const EditorStatusBar = memo(
     lastSaved,
     isFocusMode,
     isTypewriterMode,
+    onToggleShortcuts,
   }: EditorStatusBarProps) => {
     const chars = editor.storage.characterCount?.characters() ?? 0;
     const words = editor.storage.characterCount?.words() ?? 0;
@@ -35,6 +45,15 @@ const EditorStatusBar = memo(
         </div>
         <div className="flex items-center gap-4">
           <PomodoroTimer />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground"
+            onClick={onToggleShortcuts}
+          >
+            <Keyboard className="h-3 w-3" />
+            Shortcuts
+          </Button>
           {isTypewriterMode && (
             <span className="flex items-center gap-1 text-primary">
               <AlignCenter className="h-3 w-3" />
