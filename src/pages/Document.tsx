@@ -36,11 +36,16 @@ const Document = () => {
   const [content, setContent] = useState("");
   const [activeUsers, setActiveUsers] = useState<Presence[]>([]);
   const [saved, setSaved] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
 
-  // Redirect to auth if not logged in
+  // Wait for auth session to restore before doing anything
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) navigate("/auth");
+      if (!session) {
+        navigate("/auth");
+      } else {
+        setSessionReady(true);
+      }
     });
   }, [navigate]);
 
@@ -59,7 +64,7 @@ const Document = () => {
       if (error) throw error;
       return data;
     },
-    enabled: !!id,
+    enabled: !!id && sessionReady,
     retry: 1,
   });
 
