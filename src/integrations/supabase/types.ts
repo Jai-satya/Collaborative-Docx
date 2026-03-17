@@ -21,6 +21,8 @@ export type Database = {
           created_by: string | null;
           document_id: string;
           id: string;
+          is_resolved: boolean;
+          parent_id: string | null;
         };
         Insert: {
           content: string;
@@ -28,6 +30,8 @@ export type Database = {
           created_by?: string | null;
           document_id: string;
           id?: string;
+          is_resolved?: boolean;
+          parent_id?: string | null;
         };
         Update: {
           content?: string;
@@ -35,6 +39,8 @@ export type Database = {
           created_by?: string | null;
           document_id?: string;
           id?: string;
+          is_resolved?: boolean;
+          parent_id?: string | null;
         };
         Relationships: [
           {
@@ -133,10 +139,12 @@ export type Database = {
           content: string | null;
           created_at: string;
           created_by: string | null;
+          deleted_at: string | null;
           id: string;
           is_template: boolean | null;
           parent_id: string | null;
           status: string | null;
+          tags: string[] | null;
           title: string;
           updated_at: string;
         };
@@ -144,10 +152,12 @@ export type Database = {
           content?: string | null;
           created_at?: string;
           created_by?: string | null;
+          deleted_at?: string | null;
           id?: string;
           is_template?: boolean | null;
           parent_id?: string | null;
           status?: string | null;
+          tags?: string[] | null;
           title?: string;
           updated_at?: string;
         };
@@ -155,10 +165,12 @@ export type Database = {
           content?: string | null;
           created_at?: string;
           created_by?: string | null;
+          deleted_at?: string | null;
           id?: string;
           is_template?: boolean | null;
           parent_id?: string | null;
           status?: string | null;
+          tags?: string[] | null;
           title?: string;
           updated_at?: string;
         };

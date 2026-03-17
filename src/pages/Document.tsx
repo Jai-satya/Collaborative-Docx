@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import DocumentEditor from "@/components/DocumentEditor";
-import Comments from "@/components/Comments";
+import Comments from "../components/Comments";
 import DocumentShareDialog from "@/components/DocumentShareDialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -25,6 +25,7 @@ type DocumentRow = Tables<"documents">;
 interface PresencePayload {
   user: Presence["user"];
   cursor?: Presence["cursor"];
+  lastActive?: string;
 }
 
 const Document = () => {
@@ -34,6 +35,8 @@ const Document = () => {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
   const [activeUsers, setActiveUsers] = useState<Presence[]>([]);
   const [saved, setSaved] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
@@ -74,6 +77,7 @@ const Document = () => {
       const typedDocument = document as DocumentRow;
       setTitle(typedDocument.title);
       setContent(typedDocument.content || "");
+      setTags(typedDocument.tags || []);
     }
   }, [document]);
 
@@ -116,10 +120,10 @@ const Document = () => {
           const users = Object.values(state)
             .flat()
             .map((presence) => {
-              const payload = presence as PresencePayload;
+              const payload = presence as unknown as PresencePayload;
               return {
                 user: payload.user,
-                lastActive: new Date().toISOString(),
+                lastActive: payload.lastActive || new Date().toISOString(),
                 cursor: payload.cursor,
               };
             });
@@ -127,18 +131,36 @@ const Document = () => {
         })
         .subscribe(async (status) => {
           if (status === "SUBSCRIBED") {
-            await presenceChannel.track({
-              user: {
-                id: user.id,
-                name: user.email?.split("@")[0] || "Anonymous",
-                avatar: user.user_metadata?.avatar_url,
-              },
-            });
+            const trackPresence = async () => {
+              await presenceChannel.track({
+                user: {
+                  id: user.id,
+                  name: user.email?.split("@")[0] || "Anonymous",
+                  avatar: user.user_metadata?.avatar_url,
+                },
+                lastActive: new Date().toISOString(),
+              });
+            };
+
+            await trackPresence();
+
+            const heartbeat = setInterval(trackPresence, 15000);
+            (
+              presenceChannel as {
+                __heartbeat?: ReturnType<typeof setInterval>;
+              }
+            ).__heartbeat = heartbeat;
           }
         });
     };
     setupPresence();
     return () => {
+      const heartbeat = (
+        presenceChannel as
+          | { __heartbeat?: ReturnType<typeof setInterval> }
+          | undefined
+      )?.__heartbeat;
+      if (heartbeat) clearInterval(heartbeat);
       if (presenceChannel!) supabase.removeChannel(presenceChannel);
     };
   }, [id]);
@@ -147,13 +169,15 @@ const Document = () => {
     mutationFn: async ({
       title,
       content,
+      tags,
     }: {
       title: string;
       content: string;
+      tags: string[];
     }) => {
       const { error } = await supabase
         .from("documents")
-        .update({ title, content, updated_at: new Date().toISOString() })
+        .update({ title, content, tags, updated_at: new Date().toISOString() })
         .eq("id", id);
       if (error) throw error;
     },
@@ -172,9 +196,23 @@ const Document = () => {
   });
 
   const handleSave = () => {
-    updateDocument.mutate({ title, content });
+    updateDocument.mutate({ title, content, tags });
     if (id) snapshotVersion(id, content);
   };
+
+  const addTag = () => {
+    const normalized = tagInput.trim().toLowerCase();
+    if (!normalized || tags.includes(normalized)) return;
+    setTags((prev) => [...prev, normalized]);
+    setTagInput("");
+  };
+
+  const removeTag = (tag: string) => {
+    setTags((prev) => prev.filter((value) => value !== tag));
+  };
+
+  const isIdle = (lastActive: string) =>
+    Date.now() - new Date(lastActive).getTime() > 30000;
 
   // Ctrl+S to save manually
   useEffect(() => {
@@ -253,15 +291,20 @@ const Document = () => {
             {activeUsers.length > 0 && (
               <div className="hidden sm:flex -space-x-1.5 mr-1">
                 {activeUsers.slice(0, 4).map((presence) => (
-                  <Avatar
-                    key={presence.user.id}
-                    className="h-7 w-7 border-2 border-background"
-                  >
-                    <AvatarImage src={presence.user.avatar} />
-                    <AvatarFallback className="text-[10px] font-ui bg-primary text-primary-foreground">
-                      {presence.user.name[0]?.toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div key={presence.user.id} className="relative">
+                    <Avatar
+                      className="h-7 w-7 border-2 border-background"
+                      title={`${presence.user.name} · ${isIdle(presence.lastActive) ? "Idle" : "Active"}`}
+                    >
+                      <AvatarImage src={presence.user.avatar} />
+                      <AvatarFallback className="text-[10px] font-ui bg-primary text-primary-foreground">
+                        {presence.user.name[0]?.toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span
+                      className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-background ${isIdle(presence.lastActive) ? "bg-yellow-500" : "bg-green-500"}`}
+                    />
+                  </div>
                 ))}
                 {activeUsers.length > 4 && (
                   <div className="h-7 w-7 rounded-full bg-muted border-2 border-background flex items-center justify-center text-[10px] font-ui text-muted-foreground">
@@ -303,6 +346,34 @@ const Document = () => {
               </span>
             </Button>
           </div>
+        </div>
+        <div className="container mx-auto px-3 sm:px-4 md:px-6 pb-2 flex flex-wrap items-center gap-2">
+          {tags.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => removeTag(tag)}
+              className="text-xs font-ui px-2 py-1 rounded-full bg-muted text-muted-foreground hover:text-foreground"
+              aria-label={`Remove tag ${tag}`}
+            >
+              #{tag} x
+            </button>
+          ))}
+          <input
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addTag();
+              }
+            }}
+            placeholder="Add tag"
+            className="h-8 px-2 rounded-md border border-border bg-background text-sm font-ui"
+          />
+          <Button size="sm" variant="outline" onClick={addTag} className="h-8">
+            Add Tag
+          </Button>
         </div>
       </header>
 

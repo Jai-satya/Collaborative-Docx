@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import DocumentEditor from "@/components/DocumentEditor";
-import Comments from "@/components/Comments";
+import Comments from "../components/Comments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -175,7 +175,7 @@ const SharedDocument = () => {
           const users = Object.values(state)
             .flat()
             .map((presence) => {
-              const payload = presence as PresencePayload;
+              const payload = presence as unknown as PresencePayload;
               return {
                 user: payload.user,
                 lastActive: new Date().toISOString(),
@@ -243,11 +243,6 @@ const SharedDocument = () => {
 
   const handleContentUpdate = (newContent: string) => {
     if (permissionLevel === "view") {
-      toast({
-        variant: "destructive",
-        title: "Permission denied",
-        description: "You only have view access to this document",
-      });
       return;
     }
 
@@ -462,6 +457,7 @@ const SharedDocument = () => {
               content={content}
               onUpdate={handleContentUpdate}
               documentId={documentId}
+              isReadOnly={permissionLevel !== "edit"}
             />
           )}
         </div>

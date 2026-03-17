@@ -28,6 +28,13 @@ interface Match {
   to: number;
 }
 
+interface TextSegment {
+  start: number;
+  end: number;
+  pos: number;
+  text: string;
+}
+
 const FindReplace = memo(({ editor, onClose }: FindReplaceProps) => {
   const [findText, setFindText] = useState("");
   const [replaceText, setReplaceText] = useState("");
@@ -42,6 +49,33 @@ const FindReplace = memo(({ editor, onClose }: FindReplaceProps) => {
     findInputRef.current?.focus();
   }, []);
 
+  const scrollToSelection = useCallback(() => {
+    const { node } = editor.view.domAtPos(editor.state.selection.from);
+    const el = node instanceof HTMLElement ? node : node.parentElement;
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [editor]);
+
+  const buildTextSegments = useCallback(() => {
+    const segments: TextSegment[] = [];
+    let offset = 0;
+
+    editor.state.doc.descendants((node, pos) => {
+      if (!node.isText) return;
+      const text = node.text || "";
+      if (!text.length) return;
+
+      segments.push({
+        start: offset,
+        end: offset + text.length,
+        pos,
+        text,
+      });
+      offset += text.length;
+    });
+
+    return segments;
+  }, [editor]);
+
   const findMatches = useCallback(() => {
     if (!findText) {
       setMatches([]);
@@ -50,9 +84,17 @@ const FindReplace = memo(({ editor, onClose }: FindReplaceProps) => {
       return;
     }
 
-    const doc = editor.state.doc;
-    const text = doc.textContent;
+    const text = editor.state.doc.textContent;
     const found: Match[] = [];
+    const segments = buildTextSegments();
+
+    const toDocPos = (textOffset: number) => {
+      const segment = segments.find(
+        (current) => textOffset >= current.start && textOffset < current.end,
+      );
+      if (!segment) return null;
+      return segment.pos + (textOffset - segment.start);
+    };
 
     try {
       let searchText: RegExp;
@@ -65,25 +107,11 @@ const FindReplace = memo(({ editor, onClose }: FindReplaceProps) => {
 
       let match: RegExpExecArray | null;
       while ((match = searchText.exec(text)) !== null) {
-        // Convert text offset to ProseMirror position
-        let textOffset = 0;
-        doc.descendants((node, nodePos) => {
-          if (node.isText && textOffset <= match!.index) {
-            const nodeText = node.text || "";
-            const start = match!.index - textOffset;
-            if (start >= 0 && start < nodeText.length) {
-              found.push({
-                from: nodePos + start,
-                to: nodePos + start + match![0].length,
-              });
-            }
-            textOffset += nodeText.length;
-          } else if (node.isBlock && !node.isTextblock) {
-            // Skip
-          } else if (!node.isText) {
-            textOffset += node.textContent.length;
-          }
-        });
+        const start = toDocPos(match.index);
+        const end = toDocPos(match.index + match[0].length - 1);
+        if (start !== null && end !== null) {
+          found.push({ from: start, to: end + 1 });
+        }
 
         if (searchText.lastIndex === match.index) break; // prevent infinite loops
       }
@@ -110,18 +138,19 @@ const FindReplace = memo(({ editor, onClose }: FindReplaceProps) => {
       });
       scrollToSelection();
     }
-  }, [findText, caseSensitive, useRegex, editor]);
+  }, [
+    findText,
+    caseSensitive,
+    useRegex,
+    editor,
+    buildTextSegments,
+    scrollToSelection,
+  ]);
 
   useEffect(() => {
     const timer = setTimeout(findMatches, 200);
     return () => clearTimeout(timer);
   }, [findMatches]);
-
-  const scrollToSelection = useCallback(() => {
-    const { node } = editor.view.domAtPos(editor.state.selection.from);
-    const el = node instanceof HTMLElement ? node : node.parentElement;
-    el?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [editor]);
 
   const goToMatch = useCallback(
     (index: number) => {

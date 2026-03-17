@@ -37,12 +37,14 @@ interface DocumentEditorProps {
   content: string;
   onUpdate: (content: string) => void;
   documentId: string;
+  isReadOnly?: boolean;
 }
 
 const DocumentEditor = ({
   content,
   onUpdate,
   documentId,
+  isReadOnly = false,
 }: DocumentEditorProps) => {
   const [localContent, setLocalContent] = useState(content);
   const [isFocusMode, setIsFocusMode] = useState(false);
@@ -62,6 +64,11 @@ const DocumentEditor = ({
   const isRemoteUpdateRef = useRef(false);
   const pendingContentRef = useRef<string | null>(null);
   const versionRef = useRef(0);
+  const clientIdRef = useRef(
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
 
   const editor = useEditor({
     extensions: [
@@ -103,6 +110,7 @@ const DocumentEditor = ({
       TableHeader,
     ],
     content: localContent,
+    editable: !isReadOnly,
     editorProps: {
       attributes: {
         class:
@@ -129,7 +137,11 @@ const DocumentEditor = ({
           channelRef.current.send({
             type: "broadcast",
             event: "content_update",
-            payload: { content: newContent, version },
+            payload: {
+              content: newContent,
+              version,
+              senderId: clientIdRef.current,
+            },
           });
         }
       }, 80),
@@ -159,6 +171,14 @@ const DocumentEditor = ({
       .on("broadcast", { event: "content_update" }, ({ payload }) => {
         if (!editor) return;
 
+        const incomingVersion =
+          typeof payload?.version === "number" ? payload.version : 0;
+
+        if (payload?.senderId === clientIdRef.current) return;
+
+        // Ignore out-of-order or duplicate payloads.
+        if (incomingVersion <= versionRef.current) return;
+
         // Conflict resolution: only apply if remote version is newer
         // and content actually differs
         if (payload.content === editor.getHTML()) return;
@@ -184,6 +204,8 @@ const DocumentEditor = ({
           // Position no longer valid
         }
 
+        versionRef.current = incomingVersion;
+
         isRemoteUpdateRef.current = false;
       })
       .subscribe();
@@ -200,13 +222,29 @@ const DocumentEditor = ({
 
   // Sync from parent content prop (initial load / external save)
   useEffect(() => {
-    if (content !== localContent && editor && !editor.isFocused) {
+    if (!editor) return;
+    const currentEditorContent = editor.getHTML();
+
+    if (content === currentEditorContent) {
       setLocalContent(content);
-      isRemoteUpdateRef.current = true;
-      editor.commands.setContent(content, false);
-      isRemoteUpdateRef.current = false;
+      return;
     }
-  }, [content]);
+
+    // Cancel any queued local writes based on stale editor state
+    // (e.g., initial empty content) before hydrating from parent.
+    debouncedSave.cancel();
+    debouncedBroadcast.cancel();
+
+    setLocalContent(content);
+    isRemoteUpdateRef.current = true;
+    editor.commands.setContent(content, false);
+    isRemoteUpdateRef.current = false;
+  }, [content, editor, debouncedSave, debouncedBroadcast]);
+
+  useEffect(() => {
+    if (!editor) return;
+    editor.setEditable(!isReadOnly);
+  }, [editor, isReadOnly]);
 
   // Auto-focus
   useEffect(() => {
@@ -231,6 +269,8 @@ const DocumentEditor = ({
 
   // Keyboard shortcuts
   useEffect(() => {
+    if (isReadOnly) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
       // Cmd/Ctrl + Shift + F for focus mode
@@ -255,7 +295,7 @@ const DocumentEditor = ({
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isZenMode]);
+  }, [isZenMode, isReadOnly]);
 
   if (!editor) {
     return (
@@ -293,21 +333,25 @@ const DocumentEditor = ({
       <div
         className={`flex-1 min-w-0 border border-border/50 rounded-xl overflow-hidden bg-card shadow-soft transition-all duration-300 ${isFocusMode ? "focus-mode shadow-dramatic" : ""} ${isTypewriterMode ? "typewriter-mode" : ""}`}
       >
-        <EditorToolbar
-          editor={editor}
-          isFocusMode={isFocusMode}
-          isTypewriterMode={isTypewriterMode}
-          isZenMode={isZenMode}
-          onToggleFocusMode={() => setIsFocusMode((prev) => !prev)}
-          onToggleTypewriterMode={() => setIsTypewriterMode((prev) => !prev)}
-          onToggleZenMode={() => setIsZenMode((prev) => !prev)}
-          onOpenFindReplace={() => setShowFindReplace((prev) => !prev)}
-          onToggleOutline={() => setShowOutline((prev) => !prev)}
-          onToggleWritingGoals={() => setShowWritingGoals((prev) => !prev)}
-          onToggleExport={() => setShowExport((prev) => !prev)}
-          onToggleWordFrequency={() => setShowWordFrequency((prev) => !prev)}
-          onToggleVersionHistory={() => setShowVersionHistory((prev) => !prev)}
-        />
+        {!isReadOnly && (
+          <EditorToolbar
+            editor={editor}
+            isFocusMode={isFocusMode}
+            isTypewriterMode={isTypewriterMode}
+            isZenMode={isZenMode}
+            onToggleFocusMode={() => setIsFocusMode((prev) => !prev)}
+            onToggleTypewriterMode={() => setIsTypewriterMode((prev) => !prev)}
+            onToggleZenMode={() => setIsZenMode((prev) => !prev)}
+            onOpenFindReplace={() => setShowFindReplace((prev) => !prev)}
+            onToggleOutline={() => setShowOutline((prev) => !prev)}
+            onToggleWritingGoals={() => setShowWritingGoals((prev) => !prev)}
+            onToggleExport={() => setShowExport((prev) => !prev)}
+            onToggleWordFrequency={() => setShowWordFrequency((prev) => !prev)}
+            onToggleVersionHistory={() =>
+              setShowVersionHistory((prev) => !prev)
+            }
+          />
+        )}
 
         {/* Find & Replace bar */}
         {showFindReplace && (
