@@ -42,7 +42,8 @@ import {
   PanelLeft,
   Target,
   Maximize2,
-  Type,
+  Palette,
+  SquareDashedBottom,
   Download,
   BarChart3,
   History,
@@ -50,14 +51,16 @@ import {
 import TableInsert from "./TableInsert";
 import LinkInsert from "./LinkInsert";
 
+type DocumentBorderStyle = "none" | "thin" | "medium" | "thick" | "accent";
+
 interface EditorToolbarProps {
   editor: Editor | null;
   isFocusMode: boolean;
-  isTypewriterMode: boolean;
   isZenMode: boolean;
+  documentBorderStyle: DocumentBorderStyle;
   onToggleFocusMode: () => void;
-  onToggleTypewriterMode: () => void;
   onToggleZenMode: () => void;
+  onSetDocumentBorder: (style: DocumentBorderStyle) => void;
   onOpenFindReplace: () => void;
   onToggleOutline: () => void;
   onToggleWritingGoals: () => void;
@@ -115,11 +118,11 @@ ToolbarButton.displayName = "ToolbarButton";
 const EditorToolbar: React.FC<EditorToolbarProps> = ({
   editor,
   isFocusMode,
-  isTypewriterMode,
   isZenMode,
+  documentBorderStyle,
   onToggleFocusMode,
-  onToggleTypewriterMode,
   onToggleZenMode,
+  onSetDocumentBorder,
   onOpenFindReplace,
   onToggleOutline,
   onToggleWritingGoals,
@@ -314,13 +317,6 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
         shortcut: "⌘⇧F",
       },
       {
-        icon: <Type className="h-3.5 w-3.5" />,
-        title: "Typewriter Mode",
-        action: onToggleTypewriterMode,
-        isActive: isTypewriterMode,
-        shortcut: "⌘⇧T",
-      },
-      {
         icon: <Maximize2 className="h-3.5 w-3.5" />,
         title: "Zen Mode",
         action: onToggleZenMode,
@@ -328,6 +324,51 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
       },
     ],
   ];
+
+  const currentLineHeight =
+    editor.getAttributes("paragraph")?.lineHeight || "default";
+
+  const applyLineSpacingToDocument = (lineHeight: string | null) => {
+    const { from, to } = editor.state.selection;
+    const chain = editor.chain().focus().selectAll();
+
+    if (lineHeight) {
+      chain.setLineHeight(lineHeight).run();
+    } else {
+      chain.unsetLineHeight().run();
+    }
+
+    editor.chain().focus().setTextSelection({ from, to }).run();
+  };
+
+  const currentTextColor =
+    editor.getAttributes("textStyle")?.color || "default";
+  const colorPresets = [
+    { label: "Default", value: "default", swatch: "transparent" },
+    { label: "Slate", value: "#334155", swatch: "#334155" },
+    { label: "Gray", value: "#4b5563", swatch: "#4b5563" },
+    { label: "Blue", value: "#2563eb", swatch: "#2563eb" },
+    { label: "Indigo", value: "#4338ca", swatch: "#4338ca" },
+    { label: "Green", value: "#15803d", swatch: "#15803d" },
+    { label: "Amber", value: "#b45309", swatch: "#b45309" },
+    { label: "Red", value: "#b91c1c", swatch: "#b91c1c" },
+  ] as const;
+
+  const borderPresets = [
+    { label: "None", value: "none" },
+    { label: "Thin", value: "thin" },
+    { label: "Medium", value: "medium" },
+    { label: "Thick", value: "thick" },
+    { label: "Accent Left", value: "accent" },
+  ] as const;
+
+  const applyTextColor = (value: string) => {
+    if (value === "default") {
+      editor.chain().focus().unsetColor().run();
+      return;
+    }
+    editor.chain().focus().setColor(value).run();
+  };
 
   return (
     <div className="border-b border-border/50 bg-card/80 backdrop-blur-sm px-2 sm:px-3 py-1.5 sticky top-0 z-10 overflow-x-auto">
@@ -344,6 +385,139 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
             </div>
           </React.Fragment>
         ))}
+
+        <Separator orientation="vertical" className="h-5 mx-1" />
+
+        {/* Line spacing */}
+        <DropdownMenu>
+          <TooltipProvider delayDuration={400}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-[10px] font-ui text-muted-foreground hover:text-foreground hover:bg-muted"
+                  >
+                    LH{" "}
+                    {currentLineHeight === "default"
+                      ? "Auto"
+                      : currentLineHeight}
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="font-ui text-xs z-[100]">
+                Line Spacing
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <DropdownMenuContent align="start" className="font-ui text-xs">
+            <DropdownMenuItem onClick={() => applyLineSpacingToDocument("1.2")}>
+              Very Tight (1.2)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => applyLineSpacingToDocument("1.4")}>
+              Tight (1.4)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => applyLineSpacingToDocument("1.6")}>
+              Comfortable (1.6)
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => applyLineSpacingToDocument("1.85")}
+            >
+              Relaxed (1.85)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => applyLineSpacingToDocument(null)}>
+              Default
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <Separator orientation="vertical" className="h-5 mx-1" />
+
+        {/* Text color */}
+        <DropdownMenu>
+          <TooltipProvider delayDuration={400}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+                  >
+                    <Palette className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="font-ui text-xs z-[100]">
+                Text Color
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <DropdownMenuContent align="start" className="font-ui text-xs w-44">
+            {colorPresets.map((preset) => (
+              <DropdownMenuItem
+                key={preset.label}
+                onClick={() => applyTextColor(preset.value)}
+                className="flex items-center justify-between"
+              >
+                <span>{preset.label}</span>
+                <span
+                  className="h-3 w-3 rounded-full border border-border"
+                  style={{
+                    backgroundColor:
+                      preset.swatch === "transparent"
+                        ? "hsl(var(--background))"
+                        : preset.swatch,
+                  }}
+                />
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuItem
+              disabled
+              className="text-[10px] text-muted-foreground"
+            >
+              Active: {currentTextColor === "default" ? "Default" : "Custom"}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Document border */}
+        <DropdownMenu>
+          <TooltipProvider delayDuration={400}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-[10px] font-ui text-muted-foreground hover:text-foreground hover:bg-muted"
+                  >
+                    <SquareDashedBottom className="h-3.5 w-3.5 mr-1" />
+                    BDR
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="font-ui text-xs z-[100]">
+                Document Border
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <DropdownMenuContent align="start" className="font-ui text-xs w-44">
+            {borderPresets.map((preset) => (
+              <DropdownMenuItem
+                key={preset.value}
+                onClick={() => onSetDocumentBorder(preset.value)}
+                className="flex items-center justify-between"
+              >
+                <span>{preset.label}</span>
+                {documentBorderStyle === preset.value && (
+                  <span className="text-primary">Active</span>
+                )}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Separator orientation="vertical" className="h-5 mx-1" />
 

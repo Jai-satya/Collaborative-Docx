@@ -5,7 +5,6 @@ import {
   CloudOff,
   Clock,
   Eye,
-  AlignCenter,
   Keyboard,
   Wifi,
   WifiOff,
@@ -18,7 +17,6 @@ interface EditorStatusBarProps {
   isSaving: boolean;
   lastSaved: Date | null;
   isFocusMode: boolean;
-  isTypewriterMode: boolean;
   onToggleShortcuts: () => void;
 }
 
@@ -28,7 +26,6 @@ const EditorStatusBar = memo(
     isSaving,
     lastSaved,
     isFocusMode,
-    isTypewriterMode,
     onToggleShortcuts,
   }: EditorStatusBarProps) => {
     const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -73,12 +70,6 @@ const EditorStatusBar = memo(
             <Keyboard className="h-3 w-3" />
             Shortcuts
           </Button>
-          {isTypewriterMode && (
-            <span className="hidden sm:flex items-center gap-1 text-primary">
-              <AlignCenter className="h-3 w-3" />
-              Typewriter
-            </span>
-          )}
           {isFocusMode && (
             <span className="hidden sm:flex items-center gap-1 text-primary">
               <Eye className="h-3 w-3" />

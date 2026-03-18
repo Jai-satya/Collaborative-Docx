@@ -32,6 +32,9 @@ import ExportDocument from "./ExportDocument";
 import KeyboardShortcuts from "./KeyboardShortcuts";
 import WordFrequency from "./WordFrequency";
 import VersionHistory from "./VersionHistory";
+import LineHeight from "@/extensions/line-height";
+
+type DocumentBorderStyle = "none" | "thin" | "medium" | "thick" | "accent";
 
 interface DocumentEditorProps {
   content: string;
@@ -48,10 +51,11 @@ const DocumentEditor = ({
 }: DocumentEditorProps) => {
   const [localContent, setLocalContent] = useState(content);
   const [isFocusMode, setIsFocusMode] = useState(false);
-  const [isTypewriterMode, setIsTypewriterMode] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [documentBorderStyle, setDocumentBorderStyle] =
+    useState<DocumentBorderStyle>("none");
   const [showFindReplace, setShowFindReplace] = useState(false);
   const [showWritingGoals, setShowWritingGoals] = useState(false);
   const [showOutline, setShowOutline] = useState(false);
@@ -108,6 +112,7 @@ const DocumentEditor = ({
       TableRow,
       TableCell,
       TableHeader,
+      LineHeight,
     ],
     content: localContent,
     editable: !isReadOnly,
@@ -253,20 +258,6 @@ const DocumentEditor = ({
     }
   }, [editor]);
 
-  // Typewriter mode: keep cursor line centered
-  useEffect(() => {
-    if (!editor || !isTypewriterMode) return;
-    const handler = () => {
-      const { node } = editor.view.domAtPos(editor.state.selection.from);
-      const el = node instanceof HTMLElement ? node : node.parentElement;
-      el?.scrollIntoView({ behavior: "smooth", block: "center" });
-    };
-    editor.on("selectionUpdate", handler);
-    return () => {
-      editor.off("selectionUpdate", handler);
-    };
-  }, [editor, isTypewriterMode]);
-
   // Keyboard shortcuts
   useEffect(() => {
     if (isReadOnly) return;
@@ -282,11 +273,6 @@ const DocumentEditor = ({
       if (mod && e.shiftKey && e.key === "h") {
         e.preventDefault();
         setShowFindReplace((prev) => !prev);
-      }
-      // Cmd/Ctrl + Shift + T for typewriter mode
-      if (mod && e.shiftKey && e.key === "t") {
-        e.preventDefault();
-        setIsTypewriterMode((prev) => !prev);
       }
       // Escape to exit zen mode
       if (e.key === "Escape" && isZenMode) {
@@ -331,17 +317,17 @@ const DocumentEditor = ({
 
       {/* Main editor */}
       <div
-        className={`flex-1 min-w-0 border border-border/50 rounded-xl overflow-hidden bg-card shadow-soft transition-all duration-300 ${isFocusMode ? "focus-mode shadow-dramatic" : ""} ${isTypewriterMode ? "typewriter-mode" : ""}`}
+        className={`flex-1 min-w-0 border border-border/50 rounded-xl overflow-hidden bg-card shadow-soft transition-all duration-300 ${isFocusMode ? "focus-mode shadow-dramatic" : ""}`}
       >
         {!isReadOnly && (
           <EditorToolbar
             editor={editor}
             isFocusMode={isFocusMode}
-            isTypewriterMode={isTypewriterMode}
             isZenMode={isZenMode}
+            documentBorderStyle={documentBorderStyle}
             onToggleFocusMode={() => setIsFocusMode((prev) => !prev)}
-            onToggleTypewriterMode={() => setIsTypewriterMode((prev) => !prev)}
             onToggleZenMode={() => setIsZenMode((prev) => !prev)}
+            onSetDocumentBorder={setDocumentBorderStyle}
             onOpenFindReplace={() => setShowFindReplace((prev) => !prev)}
             onToggleOutline={() => setShowOutline((prev) => !prev)}
             onToggleWritingGoals={() => setShowWritingGoals((prev) => !prev)}
@@ -363,7 +349,10 @@ const DocumentEditor = ({
           </div>
         )}
 
-        <div className="relative editorial-scroll" ref={editorRef}>
+        <div
+          className={`relative editorial-scroll document-border-${documentBorderStyle}`}
+          ref={editorRef}
+        >
           <EditorContent
             editor={editor}
             className="px-4 sm:px-8 md:px-16 py-4 sm:py-8 min-h-[300px] sm:min-h-[500px] max-h-[calc(100vh-300px)] overflow-y-auto"
@@ -375,7 +364,6 @@ const DocumentEditor = ({
           isSaving={isSaving}
           lastSaved={lastSaved}
           isFocusMode={isFocusMode}
-          isTypewriterMode={isTypewriterMode}
           onToggleShortcuts={() => setShowShortcuts((prev) => !prev)}
         />
       </div>

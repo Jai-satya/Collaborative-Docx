@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect, memo, useRef } from "react";
 import { Editor } from "@tiptap/react";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -35,6 +37,8 @@ interface TextSegment {
   text: string;
 }
 
+const findHighlightPluginKey = new PluginKey("findHighlightPlugin");
+
 const FindReplace = memo(({ editor, onClose }: FindReplaceProps) => {
   const [findText, setFindText] = useState("");
   const [replaceText, setReplaceText] = useState("");
@@ -44,6 +48,77 @@ const FindReplace = memo(({ editor, onClose }: FindReplaceProps) => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [currentMatch, setCurrentMatch] = useState(-1);
   const findInputRef = useRef<HTMLInputElement>(null);
+
+  const applyHighlights = useCallback(
+    (allMatches: Match[], activeIndex: number) => {
+      const existing = findHighlightPluginKey.get(editor.state);
+      if (!existing) return;
+
+      const decorations = allMatches.flatMap((match, index) => {
+        const list = [
+          Decoration.inline(match.from, match.to, {
+            class: "find-match",
+          }),
+        ];
+
+        if (index === activeIndex) {
+          list.push(
+            Decoration.inline(match.from, match.to, {
+              class: "find-match find-match-active",
+            }),
+          );
+        }
+
+        return list;
+      });
+
+      const transaction = editor.state.tr.setMeta(findHighlightPluginKey, {
+        decorations,
+      });
+      editor.view.dispatch(transaction);
+    },
+    [editor],
+  );
+
+  const clearHighlights = useCallback(() => {
+    const existing = findHighlightPluginKey.get(editor.state);
+    if (!existing) return;
+
+    const transaction = editor.state.tr.setMeta(findHighlightPluginKey, {
+      decorations: [],
+    });
+    editor.view.dispatch(transaction);
+  }, [editor]);
+
+  useEffect(() => {
+    if (findHighlightPluginKey.get(editor.state)) return;
+
+    editor.registerPlugin(
+      new Plugin({
+        key: findHighlightPluginKey,
+        state: {
+          init: () => DecorationSet.empty,
+          apply(tr, old) {
+            const meta = tr.getMeta(findHighlightPluginKey);
+            if (meta?.decorations) {
+              return DecorationSet.create(tr.doc, meta.decorations);
+            }
+            return old.map(tr.mapping, tr.doc);
+          },
+        },
+        props: {
+          decorations(state) {
+            return this.getState(state);
+          },
+        },
+      }),
+    );
+
+    return () => {
+      clearHighlights();
+      editor.unregisterPlugin(findHighlightPluginKey);
+    };
+  }, [editor, clearHighlights]);
 
   useEffect(() => {
     findInputRef.current?.focus();
@@ -80,7 +155,7 @@ const FindReplace = memo(({ editor, onClose }: FindReplaceProps) => {
     if (!findText) {
       setMatches([]);
       setCurrentMatch(-1);
-      // Clear any existing decorations
+      clearHighlights();
       return;
     }
 
@@ -119,6 +194,7 @@ const FindReplace = memo(({ editor, onClose }: FindReplaceProps) => {
       // Invalid regex
       setMatches([]);
       setCurrentMatch(-1);
+      clearHighlights();
       return;
     }
 
@@ -129,6 +205,7 @@ const FindReplace = memo(({ editor, onClose }: FindReplaceProps) => {
 
     setMatches(unique);
     setCurrentMatch(unique.length > 0 ? 0 : -1);
+    applyHighlights(unique, unique.length > 0 ? 0 : -1);
 
     // Highlight first match
     if (unique.length > 0) {
@@ -145,6 +222,8 @@ const FindReplace = memo(({ editor, onClose }: FindReplaceProps) => {
     editor,
     buildTextSegments,
     scrollToSelection,
+    applyHighlights,
+    clearHighlights,
   ]);
 
   useEffect(() => {
@@ -159,10 +238,11 @@ const FindReplace = memo(({ editor, onClose }: FindReplaceProps) => {
         ((index % matches.length) + matches.length) % matches.length;
       setCurrentMatch(wrappedIndex);
       const m = matches[wrappedIndex];
+      applyHighlights(matches, wrappedIndex);
       editor.commands.setTextSelection({ from: m.from, to: m.to });
       scrollToSelection();
     },
-    [matches, editor, scrollToSelection],
+    [matches, editor, scrollToSelection, applyHighlights],
   );
 
   const handleReplace = useCallback(() => {
@@ -196,11 +276,18 @@ const FindReplace = memo(({ editor, onClose }: FindReplaceProps) => {
         goToMatch(currentMatch + (e.shiftKey ? -1 : 1));
       }
       if (e.key === "Escape") {
+        clearHighlights();
         onClose();
       }
     },
-    [goToMatch, currentMatch, onClose],
+    [goToMatch, currentMatch, onClose, clearHighlights],
   );
+
+  useEffect(() => {
+    return () => {
+      clearHighlights();
+    };
+  }, [clearHighlights]);
 
   return (
     <div className="border border-border/50 rounded-lg bg-card shadow-elevated p-2 sm:p-3 space-y-2 animate-fade-in">
@@ -281,7 +368,10 @@ const FindReplace = memo(({ editor, onClose }: FindReplaceProps) => {
           variant="ghost"
           size="sm"
           className="h-7 w-7 p-0"
-          onClick={onClose}
+          onClick={() => {
+            clearHighlights();
+            onClose();
+          }}
         >
           <X className="h-3.5 w-3.5" />
         </Button>
@@ -294,7 +384,10 @@ const FindReplace = memo(({ editor, onClose }: FindReplaceProps) => {
             value={replaceText}
             onChange={(e) => setReplaceText(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Escape") onClose();
+              if (e.key === "Escape") {
+                clearHighlights();
+                onClose();
+              }
             }}
             placeholder="Replace..."
             className="h-7 text-xs font-ui flex-1"
