@@ -140,6 +140,7 @@ export type Database = {
           created_at: string;
           created_by: string | null;
           deleted_at: string | null;
+          document_border_style: string | null;
           id: string;
           is_template: boolean | null;
           parent_id: string | null;
@@ -153,6 +154,7 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           deleted_at?: string | null;
+          document_border_style?: string | null;
           id?: string;
           is_template?: boolean | null;
           parent_id?: string | null;
@@ -166,6 +168,7 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           deleted_at?: string | null;
+          document_border_style?: string | null;
           id?: string;
           is_template?: boolean | null;
           parent_id?: string | null;

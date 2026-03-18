@@ -41,6 +41,8 @@ interface DocumentEditorProps {
   onUpdate: (content: string) => void;
   documentId: string;
   isReadOnly?: boolean;
+  initialDocumentBorderStyle?: DocumentBorderStyle;
+  onDocumentBorderStyleChange?: (style: DocumentBorderStyle) => void;
 }
 
 const DocumentEditor = ({
@@ -48,6 +50,8 @@ const DocumentEditor = ({
   onUpdate,
   documentId,
   isReadOnly = false,
+  initialDocumentBorderStyle = "none",
+  onDocumentBorderStyleChange,
 }: DocumentEditorProps) => {
   const [localContent, setLocalContent] = useState(content);
   const [isFocusMode, setIsFocusMode] = useState(false);
@@ -55,7 +59,7 @@ const DocumentEditor = ({
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [documentBorderStyle, setDocumentBorderStyle] =
-    useState<DocumentBorderStyle>("none");
+    useState<DocumentBorderStyle>(initialDocumentBorderStyle);
   const [showFindReplace, setShowFindReplace] = useState(false);
   const [showWritingGoals, setShowWritingGoals] = useState(false);
   const [showOutline, setShowOutline] = useState(false);
@@ -251,6 +255,15 @@ const DocumentEditor = ({
     editor.setEditable(!isReadOnly);
   }, [editor, isReadOnly]);
 
+  useEffect(() => {
+    setDocumentBorderStyle(initialDocumentBorderStyle);
+  }, [initialDocumentBorderStyle]);
+
+  const handleSetDocumentBorder = (style: DocumentBorderStyle) => {
+    setDocumentBorderStyle(style);
+    onDocumentBorderStyleChange?.(style);
+  };
+
   // Auto-focus
   useEffect(() => {
     if (editor) {
@@ -327,7 +340,7 @@ const DocumentEditor = ({
             documentBorderStyle={documentBorderStyle}
             onToggleFocusMode={() => setIsFocusMode((prev) => !prev)}
             onToggleZenMode={() => setIsZenMode((prev) => !prev)}
-            onSetDocumentBorder={setDocumentBorderStyle}
+            onSetDocumentBorder={handleSetDocumentBorder}
             onOpenFindReplace={() => setShowFindReplace((prev) => !prev)}
             onToggleOutline={() => setShowOutline((prev) => !prev)}
             onToggleWritingGoals={() => setShowWritingGoals((prev) => !prev)}

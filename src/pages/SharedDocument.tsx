@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +21,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { verifyPassword } from "@/utils/password-utils";
+import { debounce } from "lodash";
 
 interface Presence {
   user: {
@@ -51,6 +52,13 @@ interface DocumentShare {
     id: string;
     title: string;
     content: string | null;
+    document_border_style:
+      | "none"
+      | "thin"
+      | "medium"
+      | "thick"
+      | "accent"
+      | null;
     created_by: string | null;
     created_at: string | null;
     updated_at: string | null;
@@ -60,6 +68,8 @@ interface DocumentShare {
   };
 }
 
+type DocumentBorderStyle = "none" | "thin" | "medium" | "thick" | "accent";
+
 const SharedDocument = () => {
   const { token } = useParams();
   const navigate = useNavigate();
@@ -67,6 +77,8 @@ const SharedDocument = () => {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [documentBorderStyle, setDocumentBorderStyle] =
+    useState<DocumentBorderStyle>("none");
   const [documentId, setDocumentId] = useState<string | null>(null);
   const [permissionLevel, setPermissionLevel] = useState<string | null>(null);
   const [activeUsers, setActiveUsers] = useState<Presence[]>([]);
@@ -76,6 +88,7 @@ const SharedDocument = () => {
   const [isPasswordVerified, setIsPasswordVerified] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [passwordError, setPasswordError] = useState("");
+  const hasHydratedFromServerRef = useRef(false);
 
   // Check if user is authenticated
   useEffect(() => {
@@ -120,6 +133,10 @@ const SharedDocument = () => {
       setPermissionLevel(shareData.permission_level);
       setTitle(shareData.document.title);
       setContent(shareData.document.content || "");
+      setDocumentBorderStyle(
+        shareData.document.document_border_style || "none",
+      );
+      hasHydratedFromServerRef.current = true;
     }
   }, [shareData, isPasswordVerified]);
 
@@ -210,15 +227,22 @@ const SharedDocument = () => {
     mutationFn: async ({
       title,
       content,
+      documentBorderStyle,
     }: {
       title: string;
       content: string;
+      documentBorderStyle: DocumentBorderStyle;
     }) => {
       if (!documentId) throw new Error("Document ID is missing");
 
       const { error } = await supabase
         .from("documents")
-        .update({ title, content, updated_at: new Date().toISOString() })
+        .update({
+          title,
+          content,
+          document_border_style: documentBorderStyle,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", documentId);
 
       if (error) throw error;
@@ -259,9 +283,57 @@ const SharedDocument = () => {
       return;
     }
 
-    updateDocument.mutate({ title, content });
+    updateDocument.mutate({ title, content, documentBorderStyle });
     if (shareData?.document_id) snapshotVersion(shareData.document_id, content);
   };
+
+  const debouncedAutoSave = useMemo(
+    () =>
+      debounce(
+        async (
+          nextTitle: string,
+          nextContent: string,
+          nextBorder: DocumentBorderStyle,
+        ) => {
+          const { error } = await supabase
+            .from("documents")
+            .update({
+              title: nextTitle,
+              content: nextContent,
+              document_border_style: nextBorder,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", documentId);
+
+          if (error) {
+            console.error("Auto-save failed:", error);
+          }
+        },
+        900,
+      ),
+    [documentId],
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedAutoSave.cancel();
+    };
+  }, [debouncedAutoSave]);
+
+  useEffect(() => {
+    if (!documentId || permissionLevel !== "edit") return;
+    if (!isPasswordVerified || !hasHydratedFromServerRef.current) return;
+
+    debouncedAutoSave(title, content, documentBorderStyle);
+  }, [
+    documentId,
+    permissionLevel,
+    isPasswordVerified,
+    title,
+    content,
+    documentBorderStyle,
+    debouncedAutoSave,
+  ]);
 
   const handleVerifyPassword = async () => {
     if (!shareData || !password) return;
@@ -281,6 +353,10 @@ const SharedDocument = () => {
         setPermissionLevel(shareData.permission_level);
         setTitle(shareData.document.title);
         setContent(shareData.document.content || "");
+        setDocumentBorderStyle(
+          shareData.document.document_border_style || "none",
+        );
+        hasHydratedFromServerRef.current = true;
       } else {
         setPasswordError("Incorrect password");
       }
@@ -458,6 +534,8 @@ const SharedDocument = () => {
               onUpdate={handleContentUpdate}
               documentId={documentId}
               isReadOnly={permissionLevel !== "edit"}
+              initialDocumentBorderStyle={documentBorderStyle}
+              onDocumentBorderStyleChange={setDocumentBorderStyle}
             />
           )}
         </div>

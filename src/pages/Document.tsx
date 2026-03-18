@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,12 +13,15 @@ import { snapshotVersion } from "@/utils/version-utils";
 import SEO from "@/components/SEO";
 import { motion } from "framer-motion";
 import type { Tables } from "@/integrations/supabase/types";
+import { debounce } from "lodash";
 
 interface Presence {
   user: { id: string; name: string; avatar?: string };
   lastActive: string;
   cursor?: { x: number; y: number };
 }
+
+type DocumentBorderStyle = "none" | "thin" | "medium" | "thick" | "accent";
 
 type DocumentRow = Tables<"documents">;
 
@@ -35,12 +38,15 @@ const Document = () => {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [documentBorderStyle, setDocumentBorderStyle] =
+    useState<DocumentBorderStyle>("none");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [activeUsers, setActiveUsers] = useState<Presence[]>([]);
   const [saved, setSaved] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
   const [showMobileComments, setShowMobileComments] = useState(false);
+  const hasHydratedFromServerRef = useRef(false);
 
   // Wait for auth session to restore before doing anything
   useEffect(() => {
@@ -77,7 +83,12 @@ const Document = () => {
       const typedDocument = document as DocumentRow;
       setTitle(typedDocument.title);
       setContent(typedDocument.content || "");
+      setDocumentBorderStyle(
+        (typedDocument.document_border_style as DocumentBorderStyle | null) ||
+          "none",
+      );
       setTags(typedDocument.tags || []);
+      hasHydratedFromServerRef.current = true;
     }
   }, [document]);
 
@@ -169,15 +180,23 @@ const Document = () => {
     mutationFn: async ({
       title,
       content,
+      documentBorderStyle,
       tags,
     }: {
       title: string;
       content: string;
+      documentBorderStyle: DocumentBorderStyle;
       tags: string[];
     }) => {
       const { error } = await supabase
         .from("documents")
-        .update({ title, content, tags, updated_at: new Date().toISOString() })
+        .update({
+          title,
+          content,
+          tags,
+          document_border_style: documentBorderStyle,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", id);
       if (error) throw error;
     },
@@ -196,9 +215,57 @@ const Document = () => {
   });
 
   const handleSave = () => {
-    updateDocument.mutate({ title, content, tags });
+    updateDocument.mutate({ title, content, tags, documentBorderStyle });
     if (id) snapshotVersion(id, content);
   };
+
+  const debouncedAutoSave = useMemo(
+    () =>
+      debounce(
+        async (
+          nextTitle: string,
+          nextContent: string,
+          nextTags: string[],
+          nextBorder: DocumentBorderStyle,
+        ) => {
+          const { error } = await supabase
+            .from("documents")
+            .update({
+              title: nextTitle,
+              content: nextContent,
+              tags: nextTags,
+              document_border_style: nextBorder,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", id);
+
+          if (error) {
+            console.error("Auto-save failed:", error);
+          }
+        },
+        900,
+      ),
+    [id],
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedAutoSave.cancel();
+    };
+  }, [debouncedAutoSave]);
+
+  useEffect(() => {
+    if (!id || !hasHydratedFromServerRef.current) return;
+
+    debouncedAutoSave(title, content, tags, documentBorderStyle);
+  }, [
+    id,
+    title,
+    content,
+    documentBorderStyle,
+    tags,
+    debouncedAutoSave,
+  ]);
 
   const addTag = () => {
     const normalized = tagInput.trim().toLowerCase();
@@ -390,6 +457,8 @@ const Document = () => {
               content={content}
               onUpdate={setContent}
               documentId={id!}
+              initialDocumentBorderStyle={documentBorderStyle}
+              onDocumentBorderStyleChange={setDocumentBorderStyle}
             />
           </div>
           {/* Mobile comments panel */}
