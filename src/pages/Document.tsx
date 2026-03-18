@@ -258,14 +258,7 @@ const Document = () => {
     if (!id || !hasHydratedFromServerRef.current) return;
 
     debouncedAutoSave(title, content, tags, documentBorderStyle);
-  }, [
-    id,
-    title,
-    content,
-    documentBorderStyle,
-    tags,
-    debouncedAutoSave,
-  ]);
+  }, [id, title, content, documentBorderStyle, tags, debouncedAutoSave]);
 
   const addTag = () => {
     const normalized = tagInput.trim().toLowerCase();
