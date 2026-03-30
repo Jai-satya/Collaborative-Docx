@@ -86,6 +86,13 @@ const Index = () => {
           >
             Sign In
           </Button>
+          <Button
+            variant="outline"
+            className="font-ui text-sm rounded-full"
+            onClick={() => navigate("/download")}
+          >
+            Download by Code
+          </Button>
         </div>
       </nav>
 

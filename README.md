@@ -17,7 +17,8 @@ A premium collaborative document editor built for clarity, elegance, and real-ti
 
 - **Rich Text Editing** — Bold, italic, underline, strikethrough, superscript, subscript, headings (H1–H6), blockquotes, code blocks, horizontal rules
 - **Text Alignment** — Left, center, right, and justify
-- **Text Styling** — Font color, highlight, text transform (uppercase/lowercase/capitalize)
+- **Text Styling** — Font color palette, highlight, text transform (uppercase/lowercase/capitalize)
+- **Layout Controls** — Document-level line spacing presets and document border styles
 - **Lists** — Ordered, unordered, and interactive task lists with checkboxes
 - **Tables** — Insert and edit tables with configurable rows, columns, and header rows
 - **Links** — Insert, edit, and remove hyperlinks with a popover UI
@@ -40,19 +41,30 @@ A premium collaborative document editor built for clarity, elegance, and real-ti
 - **Word Frequency** — Bar chart of the top 20 most-used words
 - **Pomodoro Timer** — Built-in 25/5/15 timer in the status bar
 - **Keyboard Shortcuts** — Comprehensive reference panel accessible from the status bar
+- **Import** — Upload and convert `.docx`, `.txt`, `.md`, `.html`, and `.rtf` files into editable documents
 
 ### Writing Modes
 
 - **Focus Mode** — Dims non-active paragraphs (`Ctrl+Shift+F`)
-- **Typewriter Mode** — Keeps the current line centered on screen (`Ctrl+Shift+T`)
 - **Zen Mode** — Full-screen, distraction-free writing
 
 ### Document Management
 
+- **Document Border Presets** — None, thin, medium, thick, and accent border styles
 - **Version History** — Snapshots saved to database on manual save; preview, compare, and restore any version
 - **Export** — Download or copy as HTML, Markdown, Plain Text, or JSON
-- **Auto-Save** — Content synced on every edit with debounced saves
+- **Download by Code** — Generate a 6-character code per document and download it from `/download` on any device
+- **Code Expiry** — Download codes expire automatically after 24 hours
+- **Code Download Formats** — Download by code as `.pdf`, `.docx`, `.md`, or `.txt`
+- **Direct PDF Generation** — PDF files are generated directly in-app (no browser print dialog)
+- **Auto-Save** — Debounced autosave for content and document border style
 - **Manual Save** — `Ctrl+S` or the Save button to explicitly save and create a version snapshot
+
+### Authentication
+
+- **Email/Password Auth** — Standard sign-up and sign-in
+- **Google OAuth** — Branded Google sign-in button with redirect callback handling
+- **Shared Access Rules** — View-only and edit sharing with optional password protection
 
 ### SEO & Performance
 
@@ -82,10 +94,11 @@ A premium collaborative document editor built for clarity, elegance, and real-ti
 ## Database Schema
 
 ```
-documents          — id, title, content, created_by, status, parent_id, is_template
+documents          — id, title, content, document_border_style, tags, deleted_at, created_by, status, parent_id, is_template
 comments           — id, document_id, content, created_by
 document_shares    — id, document_id, share_token, permission_level, password_hash
 document_versions  — id, document_id, content, word_count, char_count, created_by
+document_download_codes — id, document_id, code, created_by, expires_at
 ```
 
 All tables use **Row Level Security (RLS)** — users can only access their own documents and documents shared with them.
@@ -136,6 +149,24 @@ Option B — Run the migration SQL files manually in the [Supabase SQL Editor](h
 
 - `supabase/migrations/20260306172511_*.sql`
 - `supabase/migrations/20260312000000_create_document_versions.sql`
+- `supabase/migrations/20260317120000_add_productivity_and_collab_features.sql`
+- `supabase/migrations/20260318101000_add_document_border_style.sql`
+- `supabase/migrations/20260330113000_add_document_download_codes.sql`
+- `supabase/migrations/20260330124500_enforce_24h_download_code_expiry.sql`
+
+### 4.1 Configure Google OAuth (optional)
+
+1. In Supabase, enable Google under **Authentication -> Providers** and set Google Client ID/Secret.
+2. In Google Cloud OAuth client, add this **Authorized redirect URI**:
+
+```text
+https://<your-project-ref>.supabase.co/auth/v1/callback
+```
+
+3. In Supabase **Authentication -> URL Configuration**, add your app auth URLs (for example):
+
+- `http://localhost:5173/auth`
+- `https://your-production-domain/auth`
 
 ### 5. Start the dev server
 
@@ -154,7 +185,7 @@ src/
 ├── components/
 │   ├── ui/              # Shadcn UI primitives
 │   ├── DocumentEditor   # Core TipTap editor with toolbar and status bar
-│   ├── EditorToolbar    # Formatting buttons adn panel toggles
+│   ├── EditorToolbar    # Formatting buttons and panel toggles
 │   ├── EditorStatusBar  # Word count, timer, mode indicators
 │   ├── Comments         # Document commenting
 │   ├── DocumentList     # Dashboard document grid
@@ -177,6 +208,7 @@ src/
 │   ├── Dashboard        # Document management
 │   ├── Document         # Editor view
 │   ├── SharedDocument   # Shared document view
+│   ├── DownloadByCode   # Code-based document download page
 │   └── NotFound         # 404
 ├── hooks/               # Custom React hooks
 ├── utils/               # Helpers (cursor, password, version)
@@ -204,7 +236,6 @@ src/
 | `Ctrl+S`       | Save document + create version |
 | `Ctrl+Shift+F` | Toggle Focus Mode              |
 | `Ctrl+Shift+H` | Toggle Find & Replace          |
-| `Ctrl+Shift+T` | Toggle Typewriter Mode         |
 | `Ctrl+B`       | Bold                           |
 | `Ctrl+I`       | Italic                         |
 | `Ctrl+U`       | Underline                      |
@@ -217,4 +248,4 @@ src/
 
 ## License
 
-This project is open source under the [MIT License](LICENSE)..
+This project is open source under the [MIT License](LICENSE).

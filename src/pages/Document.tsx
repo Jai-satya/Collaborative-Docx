@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/use-toast";
 import DocumentEditor from "@/components/DocumentEditor";
 import Comments from "../components/Comments";
 import DocumentShareDialog from "@/components/DocumentShareDialog";
+import DocumentCodeDialog from "@/components/DocumentCodeDialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowLeft, Save, Check, MessageCircle } from "lucide-react";
@@ -385,6 +386,7 @@ const Document = () => {
             </Button>
 
             <DocumentShareDialog documentId={id!} />
+            <DocumentCodeDialog documentId={id!} content={content} />
 
             <Button
               onClick={handleSave}

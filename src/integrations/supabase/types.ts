@@ -96,6 +96,41 @@ export type Database = {
           },
         ];
       };
+      document_download_codes: {
+        Row: {
+          code: string;
+          created_at: string;
+          created_by: string | null;
+          document_id: string;
+          expires_at: string;
+          id: string;
+        };
+        Insert: {
+          code: string;
+          created_at?: string;
+          created_by?: string | null;
+          document_id: string;
+          expires_at?: string;
+          id?: string;
+        };
+        Update: {
+          code?: string;
+          created_at?: string;
+          created_by?: string | null;
+          document_id?: string;
+          expires_at?: string;
+          id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "document_download_codes_document_id_fkey";
+            columns: ["document_id"];
+            isOneToOne: false;
+            referencedRelation: "documents";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       document_versions: {
         Row: {
           id: string;
