@@ -51,12 +51,14 @@ A premium collaborative document editor built for clarity, elegance, and real-ti
 ### Document Management
 
 - **Document Border Presets** — None, thin, medium, thick, and accent border styles
+- **Folders** — Create folders, filter documents by folder, and quickly create docs directly inside a folder
 - **Version History** — Snapshots saved to database on manual save; preview, compare, and restore any version
 - **Export** — Download or copy as HTML, Markdown, Plain Text, or JSON
 - **Download by Code** — Generate a 6-character code per document and download it from `/download` on any device
 - **Code Expiry** — Download codes expire automatically after 24 hours
 - **Code Download Formats** — Download by code as `.pdf`, `.docx`, `.md`, or `.txt`
 - **Direct PDF Generation** — PDF files are generated directly in-app (no browser print dialog)
+- **Folder Download by Code** — Generate a unique folder code and download all folder docs in one `.zip` from `/download-folder`
 - **Auto-Save** — Debounced autosave for content and document border style
 - **Manual Save** — `Ctrl+S` or the Save button to explicitly save and create a version snapshot
 
@@ -99,6 +101,8 @@ comments           — id, document_id, content, created_by
 document_shares    — id, document_id, share_token, permission_level, password_hash
 document_versions  — id, document_id, content, word_count, char_count, created_by
 document_download_codes — id, document_id, code, created_by, expires_at
+folders            — id, name, created_by, created_at, updated_at
+folder_download_codes — id, folder_id, code, created_by, expires_at
 ```
 
 All tables use **Row Level Security (RLS)** — users can only access their own documents and documents shared with them.
@@ -153,6 +157,7 @@ Option B — Run the migration SQL files manually in the [Supabase SQL Editor](h
 - `supabase/migrations/20260318101000_add_document_border_style.sql`
 - `supabase/migrations/20260330113000_add_document_download_codes.sql`
 - `supabase/migrations/20260330124500_enforce_24h_download_code_expiry.sql`
+- `supabase/migrations/20260331090000_add_folders_and_folder_download_codes.sql`
 
 ### 4.1 Configure Google OAuth (optional)
 
@@ -209,6 +214,7 @@ src/
 │   ├── Document         # Editor view
 │   ├── SharedDocument   # Shared document view
 │   ├── DownloadByCode   # Code-based document download page
+│   ├── DownloadFolderByCode # Folder-code based zip download page
 │   └── NotFound         # 404
 ├── hooks/               # Custom React hooks
 ├── utils/               # Helpers (cursor, password, version)

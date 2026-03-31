@@ -79,6 +79,10 @@ const Document = () => {
     retry: 1,
   });
 
+  const dashboardPath = document?.folder_id
+    ? `/dashboard?folder=${document.folder_id}`
+    : "/dashboard";
+
   useEffect(() => {
     if (document) {
       const typedDocument = document as DocumentRow;
@@ -312,7 +316,7 @@ const Document = () => {
             view it.
           </p>
           <Button
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigate(dashboardPath)}
             className="rounded-full"
           >
             Back to Dashboard
@@ -334,7 +338,7 @@ const Document = () => {
         <div className="container mx-auto px-3 sm:px-4 md:px-6 py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-4">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate(dashboardPath)}
               className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
             >
               <ArrowLeft className="h-4 w-4" />

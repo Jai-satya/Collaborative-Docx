@@ -79,20 +79,29 @@ const Index = () => {
           <h2 className="font-display text-xl font-bold tracking-tight text-foreground">
             Collaborative Docx
           </h2>
-          <Button
-            variant="ghost"
-            className="font-ui text-sm"
-            onClick={() => navigate("/auth")}
-          >
-            Sign In
-          </Button>
-          <Button
-            variant="outline"
-            className="font-ui text-sm rounded-full"
-            onClick={() => navigate("/download")}
-          >
-            Download by Code
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              className="font-ui text-sm"
+              onClick={() => navigate("/auth")}
+            >
+              Sign In
+            </Button>
+            <Button
+              variant="outline"
+              className="font-ui text-sm rounded-full"
+              onClick={() => navigate("/download")}
+            >
+              Download by Code
+            </Button>
+            <Button
+              variant="outline"
+              className="font-ui text-sm rounded-full"
+              onClick={() => navigate("/download-folder")}
+            >
+              Folder Download
+            </Button>
+          </div>
         </div>
       </nav>
 

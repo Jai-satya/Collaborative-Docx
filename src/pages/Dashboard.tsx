@@ -1,24 +1,71 @@
-import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useMutation } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import DocumentList from "@/components/DocumentList";
-import { Upload, Plus, LogOut, FileText, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import FolderCodeDialog from "@/components/FolderCodeDialog";
+import {
+  Upload,
+  Plus,
+  LogOut,
+  FileText,
+  Trash2,
+  FolderPlus,
+  FolderOpen,
+  ArrowLeft,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import type { Tables } from "@/integrations/supabase/types";
 import SEO from "@/components/SEO";
 import { importDocumentFile } from "@/utils/document-import";
 
 type DocumentRow = Tables<"documents">;
+type FolderRow = Tables<"folders">;
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [userName, setUserName] = useState("");
   const [viewMode, setViewMode] = useState<"active" | "trash">("active");
+
+  const selectedFolder = searchParams.get("folder") || "__unfiled__";
+  const setSelectedFolder = useCallback(
+    (folderId: string) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (folderId === "__unfiled__") {
+            next.delete("folder");
+          } else {
+            next.set("folder", folderId);
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+  const [newFolderName, setNewFolderName] = useState("");
   const uploadInputRef = useRef<HTMLInputElement>(null);
+
+  const { data: folders } = useQuery({
+    queryKey: ["folders"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("folders")
+        .select("*")
+        .order("updated_at", { ascending: false });
+
+      if (error) throw error;
+      return data;
+    },
+  });
 
   useEffect(() => {
     const checkUser = async () => {
@@ -44,7 +91,7 @@ const Dashboard = () => {
   };
 
   const createDocument = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (folderId: string | null) => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -52,7 +99,13 @@ const Dashboard = () => {
 
       const { data, error } = await supabase
         .from("documents")
-        .insert([{ title: "Untitled Document", created_by: user.id }])
+        .insert([
+          {
+            title: "Untitled Document",
+            created_by: user.id,
+            folder_id: folderId,
+          },
+        ])
         .select()
         .single();
 
@@ -60,13 +113,48 @@ const Dashboard = () => {
       return data;
     },
     onSuccess: (data: DocumentRow) => {
-      navigate(`/documents/${data.id}`);
+      const folderParam = selectedFolder !== "__unfiled__" ? `?folder=${selectedFolder}` : "";
+      navigate(`/documents/${data.id}${folderParam}`);
     },
     onError: () => {
       toast({
         variant: "destructive",
         title: "Error",
         description: "Failed to create document",
+      });
+    },
+  });
+
+  const createFolder = useMutation({
+    mutationFn: async (name: string) => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      const { data, error } = await supabase
+        .from("folders")
+        .insert([{ name, created_by: user.id }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (folder) => {
+      queryClient.invalidateQueries({ queryKey: ["folders"] });
+      setSelectedFolder(folder.id);
+      setNewFolderName("");
+      toast({
+        title: "Folder created",
+        description: `${folder.name} is ready.`,
+      });
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create folder",
       });
     },
   });
@@ -87,6 +175,10 @@ const Dashboard = () => {
             title: imported.title,
             content: imported.content,
             created_by: user.id,
+            folder_id:
+              selectedFolder !== "__unfiled__"
+                ? selectedFolder
+                : null,
           },
         ])
         .select()
@@ -100,7 +192,8 @@ const Dashboard = () => {
         title: "Document imported",
         description: "Your file is ready for editing.",
       });
-      navigate(`/documents/${data.id}`);
+      const folderParam = selectedFolder !== "__unfiled__" ? `?folder=${selectedFolder}` : "";
+      navigate(`/documents/${data.id}${folderParam}`);
     },
     onError: (error: Error) => {
       toast({
@@ -123,6 +216,17 @@ const Dashboard = () => {
     uploadDocument.mutate(file);
     event.target.value = "";
   };
+
+  const handleCreateFolder = () => {
+    const name = newFolderName.trim();
+    if (!name) return;
+    createFolder.mutate(name);
+  };
+
+  const currentFolderForNewDoc =
+    selectedFolder !== "__unfiled__"
+      ? selectedFolder
+      : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -153,7 +257,7 @@ const Dashboard = () => {
               onChange={handleFileSelected}
             />
             <Button
-              onClick={() => createDocument.mutate()}
+              onClick={() => createDocument.mutate(currentFolderForNewDoc)}
               disabled={createDocument.isPending}
               className="font-ui text-sm rounded-full shadow-soft hover:shadow-elevated transition-all"
             >
@@ -213,7 +317,69 @@ const Dashboard = () => {
               </Button>
             </div>
           </div>
-          <DocumentList showTrash={viewMode === "trash"} />
+
+          {viewMode === "active" && (
+            <div className="mb-6 rounded-xl border border-border/60 p-4 bg-card/70 space-y-3">
+              <div className="flex flex-col md:flex-row gap-2">
+                <Input
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  placeholder="Create a new folder..."
+                  className="font-ui"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleCreateFolder();
+                  }}
+                />
+                <Button
+                  onClick={handleCreateFolder}
+                  disabled={createFolder.isPending || !newFolderName.trim()}
+                  className="rounded-full"
+                >
+                  <FolderPlus className="h-4 w-4 mr-2" /> Create Folder
+                </Button>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {selectedFolder !== "__unfiled__" && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-full"
+                      onClick={() => setSelectedFolder("__unfiled__")}
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5 mr-1" />
+                      Back to Unfiled
+                    </Button>
+                    <FolderCodeDialog folderId={selectedFolder} />
+                  </>
+                )}
+                {(folders || []).map((folder: FolderRow) => (
+                  <div
+                    key={folder.id}
+                    className="inline-flex items-center rounded-full border border-border p-0.5"
+                  >
+                    <Button
+                      size="sm"
+                      variant={
+                        selectedFolder === folder.id ? "default" : "ghost"
+                      }
+                      className="rounded-full"
+                      onClick={() => setSelectedFolder(folder.id)}
+                    >
+                      <FolderOpen className="h-3.5 w-3.5 mr-1" />
+                      {folder.name}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <DocumentList
+            showTrash={viewMode === "trash"}
+            folderFilter={viewMode === "active" ? selectedFolder : "all"}
+          />
         </motion.div>
       </main>
     </div>

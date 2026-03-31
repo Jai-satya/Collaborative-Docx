@@ -131,6 +131,65 @@ export type Database = {
           },
         ];
       };
+      folder_download_codes: {
+        Row: {
+          code: string;
+          created_at: string;
+          created_by: string | null;
+          expires_at: string;
+          folder_id: string;
+          id: string;
+        };
+        Insert: {
+          code: string;
+          created_at?: string;
+          created_by?: string | null;
+          expires_at?: string;
+          folder_id: string;
+          id?: string;
+        };
+        Update: {
+          code?: string;
+          created_at?: string;
+          created_by?: string | null;
+          expires_at?: string;
+          folder_id?: string;
+          id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "folder_download_codes_folder_id_fkey";
+            columns: ["folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      folders: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          name: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       document_versions: {
         Row: {
           id: string;
@@ -176,6 +235,7 @@ export type Database = {
           created_by: string | null;
           deleted_at: string | null;
           document_border_style: string | null;
+          folder_id: string | null;
           id: string;
           is_template: boolean | null;
           parent_id: string | null;
@@ -190,6 +250,7 @@ export type Database = {
           created_by?: string | null;
           deleted_at?: string | null;
           document_border_style?: string | null;
+          folder_id?: string | null;
           id?: string;
           is_template?: boolean | null;
           parent_id?: string | null;
@@ -204,6 +265,7 @@ export type Database = {
           created_by?: string | null;
           deleted_at?: string | null;
           document_border_style?: string | null;
+          folder_id?: string | null;
           id?: string;
           is_template?: boolean | null;
           parent_id?: string | null;
@@ -213,6 +275,13 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "documents_folder_id_fkey";
+            columns: ["folder_id"];
+            isOneToOne: false;
+            referencedRelation: "folders";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "documents_parent_id_fkey";
             columns: ["parent_id"];

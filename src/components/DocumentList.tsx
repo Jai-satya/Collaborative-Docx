@@ -17,14 +17,20 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type DocumentRow = Tables<"documents">;
 
-const DocumentList = ({ showTrash = false }: { showTrash?: boolean }) => {
+const DocumentList = ({
+  showTrash = false,
+  folderFilter = "all",
+}: {
+  showTrash?: boolean;
+  folderFilter?: string;
+}) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState("all");
 
   const { data: documents, isLoading } = useQuery({
-    queryKey: ["documents", showTrash],
+    queryKey: ["documents", showTrash, folderFilter],
     queryFn: async () => {
       const query = supabase
         .from("documents")
@@ -35,6 +41,12 @@ const DocumentList = ({ showTrash = false }: { showTrash?: boolean }) => {
         query.not("deleted_at", "is", null);
       } else {
         query.is("deleted_at", null);
+      }
+
+      if (folderFilter === "__unfiled__") {
+        query.is("folder_id", null);
+      } else if (folderFilter !== "all") {
+        query.eq("folder_id", folderFilter);
       }
 
       const { data, error } = await query;

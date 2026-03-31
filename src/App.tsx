@@ -8,6 +8,7 @@ import Document from "@/pages/Document";
 import Auth from "@/pages/Auth";
 import SharedDocument from "@/pages/SharedDocument";
 import DownloadByCode from "@/pages/DownloadByCode";
+import DownloadFolderByCode from "@/pages/DownloadFolderByCode";
 import NotFound from "@/pages/NotFound";
 import "./App.css";
 
@@ -25,6 +26,7 @@ function App() {
             <Route path="/auth" element={<Auth />} />
             <Route path="/shared/:token" element={<SharedDocument />} />
             <Route path="/download" element={<DownloadByCode />} />
+            <Route path="/download-folder" element={<DownloadFolderByCode />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
